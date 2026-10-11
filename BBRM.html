@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Block Blast — RIVE MOBILE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: radial-gradient(circle at 50% 30%, #1e1b4b 0%, #0a0a1a 60%, #000 100%);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+    color: #fff;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bb-wrap {
+    background: linear-gradient(160deg, #1e1b4b, #0f0f2e);
+    border: 2px solid #6366f1;
+    border-radius: 20px;
+    padding: 14px;
+    box-shadow:
+      0 0 30px rgba(99, 102, 241, 0.4),
+      0 0 60px rgba(99, 102, 241, 0.15),
+      inset 0 0 40px rgba(99, 102, 241, 0.05);
+    max-width: 460px;
+    width: 100%;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+  .logo {
+    background: linear-gradient(90deg, #6366f1, #ec4899, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .top-btns { display: flex; gap: 6px; }
+  .mini-btn {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid #6366f1;
+    color: #a5b4fc;
+    padding: 5px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .mini-btn:hover { background: #6366f1; color: #fff; }
+  .mini-btn.muted { color: #444; border-color: #2a2a3a; }
+
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat {
+    flex: 1;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 10px;
+    padding: 6px 4px;
+    text-align: center;
+  }
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: #a5b4fc;
+    margin-bottom: 2px;
+  }
+  .stat-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+  }
+  .stat-value.combo { color: #f59e0b; text-shadow: 0 0 10px #f59e0b; }
+
+  .board-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  #board {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #0a0a1a;
+    border-radius: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    box-shadow: inset 0 0 40px rgba(99, 102, 241, 0.1);
+    touch-action: none;
+    cursor: pointer;
+  }
+
+  .pieces-area {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 8px;
+    min-height: 100px;
+    padding: 8px;
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+  }
+
+  .piece-slot {
+    flex: 1;
+    height: 90px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s;
+    border-radius: 10px;
+  }
+  .piece-slot.empty {
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .piece-slot canvas {
+    display: block;
+    touch-action: none;
+    cursor: grab;
+    max-width: 100%;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.94);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 20px;
+    border-radius: 14px;
+    z-index: 20;
+  }
+  .overlay h2 {
+    font-size: 24px;
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 3px;
+  }
+  .overlay p {
+    color: #a5b4fc;
+    font-size: 11px;
+    letter-spacing: 1px;
+    line-height: 2;
+  }
+  .overlay button {
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    color: #fff;
+    border: none;
+    padding: 12px 32px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    cursor: pointer;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+    transition: all 0.2s;
+  }
+  .overlay button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(99, 102, 241, 0.9); }
+
+  .leaderboard {
+    width: 100%;
+    max-width: 260px;
+  }
+  .lb-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+  }
+  .lb-row.top1 { color: #fbbf24; text-shadow: 0 0 6px #fbbf24; }
+  .lb-row.top2 { color: #c0c0c0; }
+  .lb-row.top3 { color: #cd7f32; }
+  .lb-rank { width: 22px; text-align: left; }
+  .lb-name { flex: 1; text-align: left; padding-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-score { color: #6366f1; font-weight: bold; }
+
+  .name-input {
+    background: #0a0a1a;
+    border: 2px solid #6366f1;
+    color: #fff;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-align: center;
+    text-transform: uppercase;
+    width: 200px;
+    outline: none;
+    border-radius: 8px;
+  }
+  .name-input::placeholder { color: #555; }
+
+  .hint {
+    text-align: center;
+    color: #6366f1;
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-top: 10px;
+    opacity: 0.6;
+  }
+
+  .combo-popup {
+    position: absolute;
+    pointer-events: none;
+    font-weight: 900;
+    font-size: 28px;
+    color: #f59e0b;
+    text-shadow: 0 0 20px #f59e0b, 0 0 40px #f59e0b;
+    animation: comboFloat 1s ease-out forwards;
+    z-index: 15;
+    left: 50%;
+    top: 50%;
+  }
+  @keyframes comboFloat {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -150%) scale(1); opacity: 0; }
+  }
+
+  @media (max-width: 400px) {
+    .stat-value { font-size: 14px; }
+    .logo { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="bb-wrap">
+  <div class="header">
+    <div class="logo">◄ RIVE.BLOCK BLAST ►</div>
+    <div class="top-btns">
+      <button class="mini-btn" id="soundBtn">🔊</button>
+      <button class="mini-btn" id="lbBtn">🏆</button>
+      <button class="mini-btn" id="restartBtn">↻</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">СЧЁТ</div>
+      <div class="stat-value" id="score">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">РЕКОРД</div>
+      <div class="stat-value" id="high">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">КОМБО</div>
+      <div class="stat-value combo" id="combo">x1</div>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+    <div class="overlay" id="overlay">
+      <h2>BLOCK BLAST</h2>
+      <p>ПЕРЕТАСКИВАЙ ФИГУРЫ НА ПОЛЕ<br>ЗАПОЛНЯЙ ЛИНИИ И СТОЛБЦЫ<br>ОНИ ИСЧЕЗНУТ И ДАДУТ ОЧКИ<br><br>🔥 КОМБО УВЕЛИЧИВАЕТ СЧЁТ</p>
+      <button id="startBtn">▶ ИГРАТЬ</button>
+    </div>
+  </div>
+
+  <div class="pieces-area" id="piecesArea">
+    <div class="piece-slot" data-slot="0"></div>
+    <div class="piece-slot" data-slot="1"></div>
+    <div class="piece-slot" data-slot="2"></div>
+  </div>
+
+  <div class="hint">RIVE MOBILE © 2024</div>
+</div>
+
+<script>
+(function() {
+  // ══════════════ ЗВУК ══════════════
+  const Sound = {
+    ctx: null, muted: false,
+    init() {
+      if (!this.ctx) {
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch(e) { this.muted = true; }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    tone(freq, dur, type, vol, freqEnd) {
+      if (this.muted || !this.ctx) return;
+      try {
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(freq, t);
+        if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+        g.gain.setValueAtTime(vol || 0.05, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(t); o.stop(t + dur);
+      } catch(e) {}
+    },
+    pick()  { this.tone(600, 0.05, 'sine', 0.05); },
+    place() { this.tone(350, 0.08, 'square', 0.06); },
+    clear(n) {
+      for (let i = 0; i < n; i++) {
+        setTimeout(() => this.tone(440 * Math.pow(1.26, i), 0.15, 'triangle', 0.08), i * 60);
+      }
+    },
+    combo(mult) {
+      const f = 660 * Math.min(mult, 5);
+      this.tone(f, 0.2, 'sawtooth', 0.09, f * 1.5);
+    },
+    invalid() { this.tone(120, 0.1, 'square', 0.06); },
+    gameOver() {
+      [523, 440, 349, 262].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.25, 'triangle', 0.1), i * 180));
+    }
+  };
+
+  // ══════════════ ЛИДЕРБОРД ══════════════
+  const Leaderboard = {
+    KEY: 'riveBlockBlastLeaders',
+    MAX: 10,
+    load() {
+      try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); }
+      catch(e) { return []; }
+    },
+    save(list) {
+      try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch(e) {}
+    },
+    add(name, score, lines) {
+      const list = this.load();
+      list.push({
+        name: (name || 'ИГРОК').toUpperCase().slice(0, 10),
+        score, lines, date: Date.now()
+      });
+      list.sort((a, b) => b.score - a.score);
+      this.save(list.slice(0, this.MAX));
+    },
+    getHigh() {
+      const l = this.load();
+      return l.length ? l[0].score : 0;
+    }
+  };
+
+  // ══════════════ КОНСТАНТЫ ══════════════
+  const SIZE = 8;
+  const CELL = 44;
+  const PADDING = 8;
+  const W = SIZE * CELL + PADDING * 2;
+  const H = SIZE * CELL + PADDING * 2;
+
+  const boardCanvas = document.getElementById('board');
+  const boardCtx = boardCanvas.getContext('2d');
+  boardCanvas.width = W;
+  boardCanvas.height = H;
+
+  const overlay = document.getElementById('overlay');
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('high');
+  const comboEl = document.getElementById('combo');
+  const soundBtn = document.getElementById('soundBtn');
+  const lbBtn = document.getElementById('lbBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  const COLORS = [
+    { main: '#ef4444', light: '#fca5a5', dark: '#991b1b' },
+    { main: '#f59e0b', light: '#fcd34d', dark: '#b45309' },
+    { main: '#10b981', light: '#6ee7b7', dark: '#047857' },
+    { main: '#06b6d4', light: '#67e8f9', dark: '#0e7490' },
+    { main: '#6366f1', light: '#a5b4fc', dark: '#3730a3' },
+    { main: '#a855f7', light: '#d8b4fe', dark: '#6b21a8' },
+    { main: '#ec4899', light: '#f9a8d4', dark: '#9d174d' },
+    { main: '#84cc16', light: '#bef264', dark: '#3f6212' }
+  ];
+
+  // Набор фигур Block Blast (только реально используемые формы)
+  const SHAPES = [
+    [[1]],
+    [[1,1]],
+    [[1],[1]],
+    [[1,1,1]],
+    [[1],[1],[1]],
+    // L-3
+    [[1,0],[1,1]],
+    [[0,1],[1,1]],
+    [[1,1],[1,0]],
+    [[1,1],[0,1]],
+    // Квадрат 2×2
+    [[1,1],[1,1]],
+    // T-4
+    [[1,1,1],[0,1,0]],
+    [[0,1,0],[1,1,1]],
+    [[1,0],[1,1],[1,0]],
+    [[0,1],[1,1],[0,1]],
+    // L-4
+    [[1,0],[1,0],[1,1]],
+    [[0,1],[0,1],[1,1]],
+    [[1,1],[1,0],[1,0]],
+    [[1,1],[0,1],[0,1]],
+    [[1,0,0],[1,1,1]],
+    [[0,0,1],[1,1,1]],
+    [[1,1,1],[1,0,0]],
+    [[1,1,1],[0,0,1]],
+    // Линия 4
+    [[1,1,1,1]],
+    [[1],[1],[1],[1]],
+    // S/Z
+    [[0,1,1],[1,1,0]],
+    [[1,1,0],[0,1,1]],
+    [[1,0],[1,1],[0,1]],
+    [[0,1],[1,1],[1,0]],
+    // Квадрат 3×3
+    [[1,1,1],[1,1,1],[1,1,1]],
+    // Линия 5
+    [[1,1,1,1,1]],
+    [[1],[1],[1],[1],[1]],
+    // 2×3
+    [[1,1,1],[1,1,1]],
+    [[1,1],[1,1],[1,1]],
+    // Уголки 5
+    [[1,0],[1,0],[1,1]],
+    [[1,1],[1,0],[1,0]],
+    [[1,1],[0,1],[0,1]],
+    [[0,1],[0,1],[1,1]],
+    [[1,1,1],[1,0,0],[1,0,0]],
+    [[1,0,0],[1,0,0],[1,1,1]],
+    [[0,0,1],[0,0,1],[1,1,1]],
+    [[1,1,1],[0,0,1],[0,0,1]]
+  ];
+
+  // ══════════════ СОСТОЯНИЕ ══════════════
+  let board = [];
+  let pieces = [null, null, null];
+  let score = 0;
+  let highScore = Leaderboard.getHigh();
+  let linesCleared = 0;
+  let combo = 1;
+  let running = false;
+  let clearing = [];
+
+  let dragging = null;
+  let hoverCell = null;
+
+  highEl.textContent = highScore;
+
+  // ══════════════ ГЕНЕРАЦИЯ ══════════════
+  function randomPiece() {
+    const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      shape: shape.map(r => [...r]),
+      color
+    };
+  }
+
+  // ══════════════ ПРОВЕРКИ ══════════════
+  function canPlace(shape, px, py) {
+    for (let y = 0; y < shape.length; y++) {
+      for (let x = 0; x < shape[y].length; x++) {
+        if (!shape[y][x]) continue;
+        const bx = px + x;
+        const by = py + y;
+        if (bx < 0 || bx >= SIZE || by < 0 || by >= SIZE) return false;
+        if (board[by][bx]) return false;
+      }
+    }
+    return true;
+  }
+
+  function canPlaceAnywhere(shape) {
+    for (let y = 0; y <= SIZE - shape.length; y++) {
+      for (let x = 0; x <= SIZE - shape[0].length; x++) {
+        if (canPlace(shape, x, y)) return true;
+      }
+    }
+    return false;
+  }
+
+  // ══════════════ ИНИЦИАЛИЗАЦИЯ ══════════════
+  function resetGame() {
+    board = Array.from({ length: SIZE }, () => new Array(SIZE).fill(null));
+    score = 0;
+    linesCleared = 0;
+    combo = 1;
+    clearing = [];
+    scoreEl.textContent = '0';
+    comboEl.textContent = 'x1';
+    highEl.textContent = highScore;
+    newTriple();
+    draw();
+    renderPieces();
+  }
+
+  // Выдать новую тройку фигур (когда все 3 поставлены)
+  function newTriple() {
+    for (let i = 0; i < 3; i++) {
+      pieces[i] = randomPiece();
+    }
+    // Страховка: если вообще ничего не поставить, заменяем одну фигуру на 1×1
+    if (!pieces.some(p => p && canPlaceAnywhere(p.shape))) {
+      pieces[0] = { shape: [[1]], color: COLORS[Math.floor(Math.random() * COLORS.length)] };
+    }
+  }
+
+  // ══════════════ ОТРИСОВКА БЛОКА ══════════════
+  function drawBlock(ctx, x, y, size, color, alpha, scale) {
+    const s = size * (scale || 1);
+    const offset = (size - s) / 2;
+    const px = x + offset;
+    const py = y + offset;
+    const pad = 2;
+
+    ctx.globalAlpha = alpha !== undefined ? alpha : 1;
+
+    ctx.fillStyle = color.dark;
+    roundRect(ctx, px + pad, py + pad, s - pad * 2, s - pad * 2, s * 0.15);
+    ctx.fill();
+
+    const grad = ctx.createLinearGradient(px, py, px + s, py + s);
+    grad.addColorStop(0, color.light);
+    grad.addColorStop(0.5, color.main);
+    grad.addColorStop(1, color.main);
+    ctx.fillStyle = grad;
+    roundRect(ctx, px + pad, py + pad, s - pad * 2, s - pad * 2 - s * 0.08, s * 0.15);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    roundRect(ctx, px + pad + s * 0.12, py + pad + s * 0.1, s - pad * 2 - s * 0.24, s * 0.15, s * 0.08);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.beginPath();
+    ctx.arc(px + pad + s * 0.25, py + pad + s * 0.22, s * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ══════════════ ОТРИСОВКА ПОЛЯ ══════════════
+  function draw() {
+    boardCtx.fillStyle = '#0a0a1a';
+    boardCtx.fillRect(0, 0, W, H);
+
+    // пустые ячейки
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const px = PADDING + x * CELL;
+        const py = PADDING + y * CELL;
+        boardCtx.fillStyle = 'rgba(99, 102, 241, 0.06)';
+        roundRect(boardCtx, px + 2, py + 2, CELL - 4, CELL - 4, 6);
+        boardCtx.fill();
+        boardCtx.strokeStyle = 'rgba(99, 102, 241, 0.1)';
+        boardCtx.lineWidth = 1;
+        boardCtx.stroke();
+      }
+    }
+
+    // заполненные клетки
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const c = board[y][x];
+        if (!c) continue;
+        const px = PADDING + x * CELL;
+        const py = PADDING + y * CELL;
+        const isClearing = clearing.find(cl => cl.x === x && cl.y === y);
+        if (isClearing) {
+          drawBlock(boardCtx, px, py, CELL, c, isClearing.life, 1 + (1 - isClearing.life) * 0.5);
+        } else {
+          drawBlock(boardCtx, px, py, CELL, c);
+        }
+      }
+    }
+
+    // подсветка при перетаскивании
+    if (dragging && hoverCell && canPlace(dragging.piece.shape, hoverCell.x, hoverCell.y)) {
+      // показываем куда встанет
+      for (let y = 0; y < dragging.piece.shape.length; y++) {
+        for (let x = 0; x < dragging.piece.shape[y].length; x++) {
+          if (!dragging.piece.shape[y][x]) continue;
+          const bx = hoverCell.x + x;
+          const by = hoverCell.y + y;
+          if (bx < 0 || bx >= SIZE || by < 0 || by >= SIZE) continue;
+          const px = PADDING + bx * CELL;
+          const py = PADDING + by * CELL;
+          boardCtx.fillStyle = dragging.piece.color.main;
+          boardCtx.globalAlpha = 0.35;
+          roundRect(boardCtx, px + 2, py + 2, CELL - 4, CELL - 4, 6);
+          boardCtx.fill();
+          boardCtx.globalAlpha = 1;
+          boardCtx.strokeStyle = dragging.piece.color.light;
+          boardCtx.lineWidth = 2;
+          roundRect(boardCtx, px + 2, py + 2, CELL - 4, CELL - 4, 6);
+          boardCtx.stroke();
+        }
+      }
+
+      // предпросмотр линий, которые исчезнут
+      const preview = board.map(r => r.map(c => c ? { ...c } : null));
+      for (let y = 0; y < dragging.piece.shape.length; y++) {
+        for (let x = 0; x < dragging.piece.shape[y].length; x++) {
+          if (!dragging.piece.shape[y][x]) continue;
+          const bx = hoverCell.x + x;
+          const by = hoverCell.y + y;
+          if (bx < 0 || bx >= SIZE || by < 0 || by >= SIZE) continue;
+          preview[by][bx] = { ...dragging.piece.color };
+        }
+      }
+      const { rows, cols } = findClears(preview);
+      rows.forEach(y => {
+        const py = PADDING + y * CELL;
+        boardCtx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        boardCtx.fillRect(PADDING, py, SIZE * CELL, CELL);
+      });
+      cols.forEach(x => {
+        const px = PADDING + x * CELL;
+        boardCtx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        boardCtx.fillRect(px, PADDING, CELL, SIZE * CELL);
+      });
+    }
+  }
+
+  // Только линии и столбцы (без 2×2 квадратов — как в оригинале)
+  function findClears(b) {
+    const rows = [];
+    const cols = [];
+    for (let y = 0; y < SIZE; y++) {
+      if (b[y].every(c => c)) rows.push(y);
+    }
+    for (let x = 0; x < SIZE; x++) {
+      let full = true;
+      for (let y = 0; y < SIZE; y++) {
+        if (!b[y][x]) { full = false; break; }
+      }
+      if (full) cols.push(x);
+    }
+    return { rows, cols };
+  }
+
+  // ══════════════ РАЗМЕЩЕНИЕ ФИГУРЫ ══════════════
+  function placePiece(shape, color, px, py) {
+    if (!canPlace(shape, px, py)) return false;
+
+    for (let y = 0; y < shape.length; y++) {
+      for (let x = 0; x < shape[y].length; x++) {
+        if (shape[y][x]) {
+          board[py + y][px + x] = { ...color };
+        }
+      }
+    }
+
+    Sound.place();
+
+    const { rows, cols } = findClears(board);
+    const totalClears = rows.length + cols.length;
+
+    if (totalClears > 0) {
+      // собираем все клетки к удалению
+      const cellsToClear = new Set();
+      rows.forEach(y => {
+        for (let x = 0; x < SIZE; x++) cellsToClear.add(`${x},${y}`);
+      });
+      cols.forEach(x => {
+        for (let y = 0; y < SIZE; y++) cellsToClear.add(`${x},${y}`);
+      });
+
+      // добавляем в анимацию
+      cellsToClear.forEach(key => {
+        const [x, y] = key.split(',').map(Number);
+        clearing.push({ x, y, life: 1 });
+      });
+
+      // очки
+      const basePoints = rows.length * 100 + cols.length * 100;
+      const totalPoints = basePoints * combo;
+      score += totalPoints;
+      linesCleared += totalClears;
+      scoreEl.textContent = score;
+
+      if (score > highScore) {
+        highScore = score;
+        highEl.textContent = highScore;
+      }
+
+      Sound.clear(totalClears);
+
+      // Комбо: за несколько очисток подряд
+      if (totalClears > 1) {
+        combo = Math.min(combo + totalClears - 1, 10);
+        Sound.combo(combo);
+        showFloatingText(`+${totalPoints}`, '#f59e0b');
+        setTimeout(() => showFloatingText(`x${combo} COMBO!`, '#f59e0b'), 200);
+      } else {
+        showFloatingText(`+${totalPoints}`, '#a5b4fc');
+      }
+      comboEl.textContent = `x${combo}`;
+
+      // Удаляем клетки сразу из board (логика), а визуально они исчезнут через анимацию
+      cellsToClear.forEach(key => {
+        const [x, y] = key.split(',').map(Number);
+        board[y][x] = null;
+      });
+
+      // Анимация очистки (canvas будет рисовать по clearing[])
+      setTimeout(() => {
+        clearing = [];
+      }, 350);
+    } else {
+      // нет очистки — сбрасываем комбо
+      if (combo > 1) {
+        combo = 1;
+        comboEl.textContent = 'x1';
+      }
+    }
+
+    return true;
+  }
+
+  function showFloatingText(text, color) {
+    const el = document.createElement('div');
+    el.className = 'combo-popup';
+    el.textContent = text;
+    el.style.color = color;
+    el.style.textShadow = `0 0 20px ${color}, 0 0 40px ${color}`;
+    document.querySelector('.board-wrap').appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+
+  // ══════════════ РЕНДЕР ФИГУР В СЛОТАХ ══════════════
+  function renderPieces() {
+    for (let i = 0; i < 3; i++) {
+      const slot = document.querySelector(`.piece-slot[data-slot="${i}"]`);
+      slot.innerHTML = '';
+      if (!pieces[i]) {
+        slot.classList.add('empty');
+        continue;
+      }
+      slot.classList.remove('empty');
+
+      const piece = pieces[i];
+      const canvas = document.createElement('canvas');
+      const shape = piece.shape;
+      const rows = shape.length;
+      const cols = shape[0].length;
+
+      const cellSize = 20;
+      canvas.width = cols * cellSize + 8;
+      canvas.height = rows * cellSize + 8;
+      canvas.style.maxWidth = '100%';
+
+      const pctx = canvas.getContext('2d');
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (shape[y][x]) {
+            drawBlock(pctx, 4 + x * cellSize, 4 + y * cellSize, cellSize, piece.color);
+          }
+        }
+      }
+
+      attachDragHandlers(canvas, i);
+      slot.appendChild(canvas);
+    }
+  }
+
+  // ══════════════ DRAG & DROP ══════════════
+  function attachDragHandlers(canvas, slotIndex) {
+    const piece = pieces[slotIndex];
+    if (!piece) return;
+
+    let dragCanvas = null;
+
+    const startDrag = (clientX, clientY) => {
+      if (!running) return;
+
+      const shape = piece.shape;
+      const rows = shape.length;
+      const cols = shape[0].length;
+      const pieceW = cols * CELL;
+      const pieceH = rows * CELL;
+
+      dragging = {
+        piece,
+        slotIndex,
+        x: clientX - pieceW / 2,
+        y: clientY - pieceH / 2,
+        w: pieceW,
+        h: pieceH
+      };
+
+      dragCanvas = document.createElement('canvas');
+      dragCanvas.id = 'dragCanvas';
+      dragCanvas.width = pieceW;
+      dragCanvas.height = pieceH;
+      dragCanvas.style.position = 'fixed';
+      dragCanvas.style.pointerEvents = 'none';
+      dragCanvas.style.zIndex = '9999';
+      dragCanvas.style.left = dragging.x + 'px';
+      dragCanvas.style.top = dragging.y + 'px';
+
+      const dctx = dragCanvas.getContext('2d');
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (shape[y][x]) {
+            drawBlock(dctx, x * CELL, y * CELL, CELL, piece.color);
+          }
+        }
+      }
+      document.body.appendChild(dragCanvas);
+
+      Sound.pick();
+      updateHoverCell(clientX, clientY);
+      draw();
+    };
+
+    const onMove = (clientX, clientY) => {
+      if (!dragging || !dragCanvas) return;
+      dragging.x = clientX - dragging.w / 2;
+      dragging.y = clientY - dragging.h / 2;
+      dragCanvas.style.left = dragging.x + 'px';
+      dragCanvas.style.top = dragging.y + 'px';
+      updateHoverCell(clientX, clientY);
+      draw();
+    };
+
+    const onEnd = () => {
+      if (!dragging) return;
+      if (dragCanvas) dragCanvas.remove();
+
+      if (hoverCell && canPlace(dragging.piece.shape, hoverCell.x, hoverCell.y)) {
+        const shape = dragging.piece.shape;
+        const color = dragging.piece.color;
+        const px = hoverCell.x;
+        const py = hoverCell.y;
+        const idx = dragging.slotIndex;
+
+        // Ставим на поле
+        placePiece(shape, color, px, py);
+
+        // Убираем фигуру из слота
+        pieces[idx] = null;
+        renderPieces();
+        draw();
+
+        // Если все 3 фигуры поставлены — выдаём новую тройку и проверяем game over
+        if (pieces.every(p => p === null)) {
+          newTriple();
+          renderPieces();
+          draw();
+
+          // Теперь проверяем, есть ли ход
+          if (!pieces.some(p => p && canPlaceAnywhere(p.shape))) {
+            setTimeout(gameOver, 300);
+          }
+        }
+      } else {
+        Sound.invalid();
+      }
+
+      dragging = null;
+      hoverCell = null;
+      draw();
+    };
+
+    // Mouse
+    canvas.addEventListener('mousedown', e => {
+      e.preventDefault();
+      startDrag(e.clientX, e.clientY);
+      const moveHandler = ev => onMove(ev.clientX, ev.clientY);
+      const upHandler = () => {
+        onEnd();
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+      };
+      document.addEventListener('mousemove', moveHandler);
+      document.addEventListener('mouseup', upHandler);
+    });
+
+    // Touch
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      Sound.init();
+      const t = e.touches[0];
+      startDrag(t.clientX, t.clientY);
+      const moveHandler = ev => {
+        ev.preventDefault();
+        const tt = ev.touches[0];
+        onMove(tt.clientX, tt.clientY);
+      };
+      const endHandler = ev => {
+        ev.preventDefault();
+        onEnd();
+        canvas.removeEventListener('touchmove', moveHandler);
+        canvas.removeEventListener('touchend', endHandler);
+        canvas.removeEventListener('touchcancel', endHandler);
+      };
+      canvas.addEventListener('touchmove', moveHandler, { passive: false });
+      canvas.addEventListener('touchend', endHandler);
+      canvas.addEventListener('touchcancel', endHandler);
+    }, { passive: false });
+  }
+
+  // ══════════════ ВЫБОР КЛЕТКИ ══════════════
+  function updateHoverCell(clientX, clientY) {
+    if (!dragging) { hoverCell = null; return; }
+
+    const boardRect = boardCanvas.getBoundingClientRect();
+    const relX = clientX - boardRect.left;
+    const relY = clientY - boardRect.top;
+    const scaleX = W / boardRect.width;
+    const scaleY = H / boardRect.height;
+    const px = relX * scaleX;
+    const py = relY * scaleY;
+
+    const shape = dragging.piece.shape;
+    const rows = shape.length;
+    const cols = shape[0].length;
+
+    // центр фигуры в клетках поля
+    const cellCenterX = (px - PADDING) / CELL;
+    const cellCenterY = (py - PADDING) / CELL;
+
+    // идеальная позиция верхнего левого угла фигуры
+    const baseX = Math.round(cellCenterX - cols / 2);
+    const baseY = Math.round(cellCenterY - rows / 2);
+
+    // ищем ближайшую допустимую позицию
+    let best = null;
+    let bestDist = Infinity;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const tx = baseX + dx;
+        const ty = baseY + dy;
+        if (canPlace(shape, tx, ty)) {
+          const fx = tx + cols / 2;
+          const fy = ty + rows / 2;
+          const dist = Math.hypot(fx - cellCenterX, fy - cellCenterY);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = { x: tx, y: ty };
+          }
+        }
+      }
+    }
+
+    hoverCell = best;
+  }
+
+  // ══════════════ GAME OVER ══════════════
+  function gameOver() {
+    if (!running) return;
+    running = false;
+    Sound.gameOver();
+
+    const defaultName = localStorage.getItem('riveBlockBlastLast') || '';
+    overlay.innerHTML = `
+      <h2 style="background:linear-gradient(90deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ИГРА ОКОНЧЕНА</h2>
+      <p>СЧЁТ: <b style="color:#fff">${score}</b><br>ЛИНИЙ: ${linesCleared}</p>
+      <input class="name-input" id="nameInput" maxlength="10" placeholder="ТВОЁ ИМЯ" value="${defaultName}">
+      <button id="saveBtn">💾 СОХРАНИТЬ</button>
+      <button id="skipBtn" style="background:transparent;color:#666;box-shadow:none;border:1px solid #333;padding:8px 20px;font-size:11px">ПРОПУСТИТЬ</button>
+    `;
+    overlay.style.display = 'flex';
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const name = (document.getElementById('nameInput').value || 'ИГРОК').trim();
+      localStorage.setItem('riveBlockBlastLast', name);
+      Leaderboard.add(name, score, linesCleared);
+      showLeaderboard();
+    });
+    document.getElementById('skipBtn').addEventListener('click', showLeaderboard);
+  }
+
+  function showLeaderboard() {
+    const list = Leaderboard.load();
+    let rows = '';
+    if (list.length === 0) {
+      rows = '<p style="color:#666;padding:10px">ПОКА ПУСТО</p>';
+    } else {
+      rows = list.map((e, i) => {
+        const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+        return `<div class="lb-row ${cls}">
+          <span class="lb-rank">${i+1}.</span>
+          <span class="lb-name">${escapeHtml(e.name)}</span>
+          <span class="lb-score">${e.score}</span>
+        </div>`;
+      }).join('');
+    }
+
+    overlay.innerHTML = `
+      <h2 style="background:linear-gradient(90deg,#fbbf24,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">🏆 ЛИДЕРЫ</h2>
+      <div class="leaderboard">${rows}</div>
+      <button id="restartBtn2">↻ ИГРАТЬ</button>
+      <button id="closeBtn" style="background:transparent;color:#666;box-shadow:none;border:1px solid #333;padding:8px 20px;font-size:11px">ЗАКРЫТЬ</button>
+    `;
+    document.getElementById('restartBtn2').addEventListener('click', startGame);
+    document.getElementById('closeBtn').addEventListener('click', () => { overlay.style.display = 'none'; });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  // ══════════════ АНИМАЦИЯ CLEARING ══════════════
+  function animateClearing() {
+    if (clearing.length > 0) {
+      clearing.forEach(c => { c.life -= 0.08; });
+      clearing = clearing.filter(c => c.life > 0);
+      draw();
+    }
+    requestAnimationFrame(animateClearing);
+  }
+
+  // ══════════════ СТАРТ ══════════════
+  function startGame() {
+    Sound.init();
+    overlay.style.display = 'none';
+    resetGame();
+    running = true;
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+
+  soundBtn.addEventListener('click', () => {
+    Sound.muted = !Sound.muted;
+    soundBtn.classList.toggle('muted', Sound.muted);
+    soundBtn.textContent = Sound.muted ? '🔇' : '🔊';
+  });
+
+  lbBtn.addEventListener('click', () => {
+    if (running) return;
+    showLeaderboard();
+  });
+
+  restartBtn.addEventListener('click', () => {
+    if (running && !confirm('Начать заново? Прогресс будет потерян.')) return;
+    startGame();
+  });
+
+  // ресайз
+  function resizeBoard() {
+    const wrap = boardCanvas.parentElement;
+    const maxW = Math.min(wrap.clientWidth, 400);
+    boardCanvas.style.width = maxW + 'px';
+    boardCanvas.style.height = 'auto';
+  }
+  window.addEventListener('resize', resizeBoard);
+  resizeBoard();
+
+  // инициализация
+  resetGame();
+  running = false;
+  animateClearing();
+})();
+</script>
+</body>
+</html>
