@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Snake — RIVE MOBILE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 15px;
+  }
+  .game-wrapper {
+    background: linear-gradient(145deg, #161b22, #0d1117);
+    border: 2px solid #30363d;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 0 30px rgba(88, 166, 255, 0.15);
+    max-width: 480px;
+    width: 100%;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .title {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #58a6ff, #a371f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .score-box {
+    background: #21262d;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid #30363d;
+    font-size: 14px;
+  }
+  .score-box b { color: #58a6ff; font-size: 16px; }
+
+  canvas {
+    display: block;
+    background: #010409;
+    border-radius: 12px;
+    border: 2px solid #21262d;
+    width: 100%;
+    height: auto;
+    touch-action: none;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    grid-template-rows: repeat(2, 60px);
+    gap: 8px;
+    justify-content: center;
+    margin-top: 15px;
+  }
+  .btn {
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    color: #e6edf3;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active, .btn:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+    transform: scale(0.95);
+  }
+  .btn.up    { grid-column: 2; grid-row: 1; }
+  .btn.left  { grid-column: 1; grid-row: 2; }
+  .btn.down  { grid-column: 2; grid-row: 2; }
+  .btn.right { grid-column: 3; grid-row: 2; }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(1, 4, 9, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 12px;
+    gap: 12px;
+    text-align: center;
+    padding: 20px;
+  }
+  .overlay h2 { color: #58a6ff; font-size: 22px; }
+  .overlay p { color: #8b949e; font-size: 14px; }
+  .overlay button {
+    background: linear-gradient(90deg, #58a6ff, #a371f7);
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .overlay button:hover { opacity: 0.9; }
+
+  .canvas-wrap { position: relative; }
+
+  .hint {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 12px;
+    color: #8b949e;
+  }
+  @media (max-width: 500px) {
+    .title { font-size: 16px; }
+    .controls { grid-template-columns: repeat(3, 55px); grid-template-rows: repeat(2, 55px); }
+  }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+  <div class="header">
+    <div class="title">🐍 RIVE SNAKE</div>
+    <div class="score-box">Очки: <b id="score">0</b></div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="game" width="400" height="400"></canvas>
+    <div class="overlay" id="overlay">
+      <h2>RIVE MOBILE SNAKE</h2>
+      <p>Управляй стрелками, WASD или свайпами</p>
+      <button id="startBtn">▶ Начать игру</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn up"    data-dir="up">▲</button>
+    <button class="btn left"  data-dir="left">◄</button>
+    <button class="btn down"  data-dir="down">▼</button>
+    <button class="btn right" data-dir="right">►</button>
+  </div>
+
+  <div class="hint">RIVE MOBILE © 2024</div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('startBtn');
+
+  const CELL = 20;
+  const COLS = canvas.width / CELL;
+  const ROWS = canvas.height / CELL;
+
+  let snake, dir, nextDir, food, score, speed, timer, running, speedUp;
+
+  function reset() {
+    snake = [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}];
+    dir = {x: 1, y: 0};
+    nextDir = {x: 1, y: 0};
+    score = 0;
+    speed = 140;
+    speedUp = 0;
+    scoreEl.textContent = '0';
+    placeFood();
+  }
+
+  function placeFood() {
+    let ok = false;
+    while (!ok) {
+      food = {
+        x: Math.floor(Math.random() * COLS),
+        y: Math.floor(Math.random() * ROWS)
+      };
+      ok = !snake.some(s => s.x === food.x && s.y === food.y);
+    }
+  }
+
+  function draw() {
+    // фон
+    ctx.fillStyle = '#010409';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // сетка
+    ctx.strokeStyle = 'rgba(48, 54, 61, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= COLS; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * CELL, 0);
+      ctx.lineTo(i * CELL, canvas.height);
+      ctx.stroke();
+    }
+    for (let j = 0; j <= ROWS; j++) {
+      ctx.beginPath();
+      ctx.moveTo(0, j * CELL);
+      ctx.lineTo(canvas.width, j * CELL);
+      ctx.stroke();
+    }
+
+    // еда
+    ctx.fillStyle = '#f85149';
+    ctx.shadowColor = '#f85149';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL/2, food.y * CELL + CELL/2, CELL/2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // змейка
+    snake.forEach((seg, i) => {
+      const isHead = i === 0;
+      const t = i / snake.length;
+      ctx.fillStyle = isHead ? '#58a6ff' : `hsl(${210 - t * 60}, 80%, ${65 - t * 20}%)`;
+      ctx.shadowColor = isHead ? '#58a6ff' : 'transparent';
+      ctx.shadowBlur = isHead ? 15 : 0;
+      roundRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2, 4);
+      ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function step() {
+    dir = nextDir;
+    const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+    // столкновение со стенами
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+      return gameOver();
+    }
+    // столкновение с собой
+    if (snake.some(s => s.x === head.x && s.y === head.y)) {
+      return gameOver();
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      scoreEl.textContent = score;
+      placeFood();
+      // ускорение каждые 5 яблок
+      speedUp++;
+      if (speedUp >= 5 && speed > 60) {
+        speed -= 8;
+        speedUp = 0;
+        clearInterval(timer);
+        timer = setInterval(step, speed);
+      }
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function gameOver() {
+    clearInterval(timer);
+    running = false;
+    overlay.innerHTML = `
+      <h2>Игра окончена</h2>
+      <p>Твой результат: <b style="color:#58a6ff">${score}</b></p>
+      <button id="restartBtn">🔄 Играть снова</button>
+    `;
+    overlay.style.display = 'flex';
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+  }
+
+  function startGame() {
+    overlay.style.display = 'none';
+    reset();
+    draw();
+    running = true;
+    clearInterval(timer);
+    timer = setInterval(step, speed);
+  }
+
+  function setDir(newDir) {
+    if (!running) return;
+    // запрет разворота на 180
+    if (dir.x + newDir.x === 0 && dir.y + newDir.y === 0) return;
+    nextDir = newDir;
+  }
+
+  // клавиатура
+  document.addEventListener('keydown', e => {
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': case 'ц': case 'Ц':
+        setDir({x: 0, y: -1}); e.preventDefault(); break;
+      case 'ArrowDown': case 's': case 'S': case 'ы': case 'Ы':
+        setDir({x: 0, y: 1}); e.preventDefault(); break;
+      case 'ArrowLeft': case 'a': case 'A': case 'ф': case 'Ф':
+        setDir({x: -1, y: 0}); e.preventDefault(); break;
+      case 'ArrowRight': case 'd': case 'D': case 'в': case 'В':
+        setDir({x: 1, y: 0}); e.preventDefault(); break;
+    }
+  });
+
+  // кнопки
+  document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const d = btn.dataset.dir;
+      if (d === 'up') setDir({x: 0, y: -1});
+      if (d === 'down') setDir({x: 0, y: 1});
+      if (d === 'left') setDir({x: -1, y: 0});
+      if (d === 'right') setDir({x: 1, y: 0});
+    });
+  });
+
+  // свайпы
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => {
+    touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+  }, {passive: true});
+  canvas.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setDir({x: dx > 0 ? 1 : -1, y: 0});
+    } else {
+      setDir({x: 0, y: dy > 0 ? 1 : -1});
+    }
+    touchStart = null;
+  }, {passive: true});
+
+  startBtn.addEventListener('click', startGame);
+
+  reset();
+  draw();
+})();
+</script>
+</body>
+</html>
