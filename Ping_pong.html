@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Pong — RIVE MOBILE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 15px;
+    overflow: hidden;
+  }
+
+  .pong-wrap {
+    background: #000;
+    border: 3px solid #0ff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 
+      0 0 20px #0ff,
+      0 0 40px #0ff inset,
+      0 0 60px rgba(0, 255, 255, 0.3);
+    position: relative;
+    max-width: 560px;
+    width: 100%;
+  }
+
+  /* CRT-сканлайны */
+  .pong-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 255, 255, 0.04) 0px,
+      rgba(0, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    border-radius: 6px;
+  }
+
+  .pong-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    color: #0ff;
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 8px #0ff;
+  }
+  .pong-header .difficulty {
+    color: #f0f;
+    text-shadow: 0 0 8px #f0f;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .scoreboard {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    color: #0ff;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-shadow: 0 0 15px #0ff;
+    margin-bottom: 10px;
+  }
+  .scoreboard .player { color: #0ff; }
+  .scoreboard .cpu { color: #f0f; text-shadow: 0 0 15px #f0f; }
+  .scoreboard .sep { color: #444; font-size: 20px; }
+
+  .canvas-wrap { position: relative; }
+
+  canvas {
+    display: block;
+    background: #000;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    width: 100%;
+    height: auto;
+    touch-action: none;
+    cursor: none;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+  .overlay h2 {
+    color: #0ff;
+    font-size: 26px;
+    letter-spacing: 6px;
+    text-shadow: 0 0 20px #0ff;
+  }
+  .overlay p {
+    color: #f0f;
+    font-size: 12px;
+    letter-spacing: 2px;
+    line-height: 1.8;
+    text-shadow: 0 0 8px #f0f;
+  }
+  .overlay button {
+    background: transparent;
+    color: #0ff;
+    border: 2px solid #0ff;
+    padding: 12px 32px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+  }
+  .overlay button:hover {
+    background: #0ff;
+    color: #000;
+    box-shadow: 0 0 30px #0ff;
+  }
+
+  .controls-hint {
+    text-align: center;
+    margin-top: 10px;
+    color: #0ff;
+    font-size: 10px;
+    letter-spacing: 2px;
+    opacity: 0.6;
+  }
+
+  .mode-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+  .mode-btn {
+    background: transparent;
+    color: #0ff;
+    border: 1px solid rgba(0, 255, 255, 0.4);
+    padding: 8px 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: #0ff;
+    color: #000;
+    box-shadow: 0 0 15px #0ff;
+  }
+  .mode-btn:hover { border-color: #0ff; }
+</style>
+</head>
+<body>
+<div class="pong-wrap">
+  <div class="pong-header">
+    <span>◄ RIVE.PONG ►</span>
+    <span class="difficulty" id="diffLabel">CPU: НОРМА</span>
+  </div>
+
+  <div class="scoreboard">
+    <span class="player" id="pScore">0</span>
+    <span class="sep">:</span>
+    <span class="cpu" id="cScore">0</span>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="game" width="600" height="400"></canvas>
+    <div class="overlay" id="overlay">
+      <h2>PONG</h2>
+      <p>◄ МЫШЬ / ПАЛЕЦ / W·S ▲<br>ДО 7 ОЧКОВ</p>
+      <div class="mode-btns">
+        <button class="mode-btn" data-diff="easy">ЛЕГКО</button>
+        <button class="mode-btn active" data-diff="normal">НОРМА</button>
+        <button class="mode-btn" data-diff="hard">ХАРД</button>
+      </div>
+      <button id="startBtn">▶ СТАРТ</button>
+    </div>
+  </div>
+
+  <div class="controls-hint">ДВИГАЙ МЫШЬЮ ИЛИ ПАЛЬЦЕМ</div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('startBtn');
+  const pScoreEl = document.getElementById('pScore');
+  const cScoreEl = document.getElementById('cScore');
+  const diffLabel = document.getElementById('diffLabel');
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const PADDLE_W = 10;
+  const PADDLE_H = 80;
+  const BALL_SIZE = 12;
+  const WIN_SCORE = 7;
+
+  let player, cpu, ball;
+  let pScore, cScore;
+  let running = false;
+  let rafId = null;
+  let difficulty = 'normal';
+  let mouseY = H / 2;
+  let particles = [];
+
+  const DIFFICULTY = {
+    easy:   { cpuSpeed: 2.8, ballSpeed: 4.5, cpuError: 60 },
+    normal: { cpuSpeed: 4.5, ballSpeed: 5.5, cpuError: 30 },
+    hard:   { cpuSpeed: 6.5, ballSpeed: 6.5, cpuError: 10 }
+  };
+
+  function resetBall(dir = 1) {
+    ball = {
+      x: W / 2,
+      y: H / 2,
+      vx: dir * DIFFICULTY[difficulty].ballSpeed,
+      vy: (Math.random() - 0.5) * 4,
+      size: BALL_SIZE
+    };
+  }
+
+  function resetGame() {
+    player = { x: 15, y: H / 2 - PADDLE_H / 2, w: PADDLE_W, h: PADDLE_H };
+    cpu = { x: W - 15 - PADDLE_W, y: H / 2 - PADDLE_H / 2, w: PADDLE_W, h: PADDLE_H };
+    pScore = 0;
+    cScore = 0;
+    pScoreEl.textContent = '0';
+    cScoreEl.textContent = '0';
+    resetBall(Math.random() > 0.5 ? 1 : -1);
+    particles = [];
+  }
+
+  function draw() {
+    // фон
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // центральная линия
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+    ctx.setLineDash([10, 15]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // рамка
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, W, H);
+
+    // ракетка игрока (голубая)
+    ctx.shadowColor = '#0ff';
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#0ff';
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+
+    // ракетка CPU (розовая)
+    ctx.shadowColor = '#f0f';
+    ctx.fillStyle = '#f0f';
+    ctx.fillRect(cpu.x, cpu.y, cpu.w, cpu.h);
+
+    // мяч
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 25;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // частицы
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = p.color;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.life;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.03;
+    });
+
+    ctx.shadowBlur = 0;
+  }
+
+  function spawnParticles(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 6,
+        vy: (Math.random() - 0.5) * 6,
+        size: Math.random() * 3 + 1,
+        color,
+        life: 1
+      });
+    }
+  }
+
+  function update() {
+    // ракетка игрока следует за мышью
+    const targetY = mouseY - PADDLE_H / 2;
+    player.y += (targetY - player.y) * 0.35;
+    player.y = Math.max(0, Math.min(H - PADDLE_H, player.y));
+
+    // ИИ ракетки
+    const cfg = DIFFICULTY[difficulty];
+    const cpuCenter = cpu.y + PADDLE_H / 2;
+    const target = ball.y + (Math.random() - 0.5) * cfg.cpuError;
+    if (Math.abs(cpuCenter - target) > 5) {
+      cpu.y += Math.sign(target - cpuCenter) * cfg.cpuSpeed;
+    }
+    cpu.y = Math.max(0, Math.min(H - PADDLE_H, cpu.y));
+
+    // мяч
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // отбивание от верха/низа
+    if (ball.y - ball.size / 2 < 0) {
+      ball.y = ball.size / 2;
+      ball.vy *= -1;
+      spawnParticles(ball.x, 0, '#0ff');
+    }
+    if (ball.y + ball.size / 2 > H) {
+      ball.y = H - ball.size / 2;
+      ball.vy *= -1;
+      spawnParticles(ball.x, H, '#0ff');
+    }
+
+    // столкновение с ракеткой игрока
+    if (ball.vx < 0 &&
+        ball.x - ball.size / 2 < player.x + player.w &&
+        ball.x - ball.size / 2 > player.x &&
+        ball.y > player.y && ball.y < player.y + player.h) {
+      ball.x = player.x + player.w + ball.size / 2;
+      const hit = (ball.y - (player.y + PADDLE_H / 2)) / (PADDLE_H / 2);
+      ball.vx = Math.abs(ball.vx) * 1.05;
+      ball.vy += hit * 3;
+      ball.vx = Math.min(ball.vx, 14);
+      spawnParticles(ball.x, ball.y, '#0ff');
+    }
+
+    // столкновение с ракеткой CPU
+    if (ball.vx > 0 &&
+        ball.x + ball.size / 2 > cpu.x &&
+        ball.x + ball.size / 2 < cpu.x + cpu.w &&
+        ball.y > cpu.y && ball.y < cpu.y + cpu.h) {
+      ball.x = cpu.x - ball.size / 2;
+      const hit = (ball.y - (cpu.y + PADDLE_H / 2)) / (PADDLE_H / 2);
+      ball.vx = -Math.abs(ball.vx) * 1.05;
+      ball.vy += hit * 3;
+      ball.vx = Math.max(ball.vx, -14);
+      spawnParticles(ball.x, ball.y, '#f0f');
+    }
+
+    // гол
+    if (ball.x < -ball.size) {
+      cScore++;
+      cScoreEl.textContent = cScore;
+      spawnParticles(0, ball.y, '#f0f');
+      checkWin() || resetBall(-1);
+    }
+    if (ball.x > W + ball.size) {
+      pScore++;
+      pScoreEl.textContent = pScore;
+      spawnParticles(W, ball.y, '#0ff');
+      checkWin() || resetBall(1);
+    }
+  }
+
+  function checkWin() {
+    if (pScore >= WIN_SCORE || cScore >= WIN_SCORE) {
+      gameOver();
+      return true;
+    }
+    return false;
+  }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    const win = pScore >= WIN_SCORE;
+    overlay.innerHTML = `
+      <h2 style="color:${win ? '#0ff' : '#f0f'};text-shadow:0 0 20px ${win ? '#0ff' : '#f0f'}">
+        ${win ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ'}
+      </h2>
+      <p style="color:${win ? '#0ff' : '#f0f'};text-shadow:0 0 8px ${win ? '#0ff' : '#f0f'}">
+        СЧЁТ ${pScore} : ${cScore}
+      </p>
+      <button id="restartBtn">↻ ЕЩЁ РАЗ</button>
+    `;
+    overlay.style.display = 'flex';
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+  }
+
+  function loop() {
+    if (!running) return;
+    update();
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startGame() {
+    overlay.style.display = 'none';
+    resetGame();
+    running = true;
+    loop();
+  }
+
+  // управление
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseY = (e.clientY - rect.top) * (H / rect.height);
+  });
+
+  canvas.addEventListener('touchstart', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height);
+    e.preventDefault();
+  }, {passive: false});
+
+  canvas.addEventListener('touchmove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseY = (e.touches[0].clientY - rect.top) * (H / rect.height);
+    e.preventDefault();
+  }, {passive: false});
+
+  // клавиатура
+  const keys = {};
+  document.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+  });
+  document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  // доп. движение с клавиатуры
+  setInterval(() => {
+    if (keys['w'] || keys['arrowup']) mouseY = Math.max(mouseY - 25, 0);
+    if (keys['s'] || keys['arrowdown']) mouseY = Math.min(mouseY + 25, H);
+  }, 30);
+
+  // смена сложности
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      difficulty = btn.dataset.diff;
+      const labels = { easy: 'ЛЕГКО', normal: 'НОРМА', hard: 'ХАРД' };
+      diffLabel.textContent = 'CPU: ' + labels[difficulty];
+    });
+  });
+
+  startBtn.addEventListener('click', startGame);
+
+  resetGame();
+  draw();
+})();
+</script>
+</body>
+</html>
