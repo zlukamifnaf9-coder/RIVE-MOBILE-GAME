@@ -1,0 +1,807 @@
+<div style="max-width:540px;margin:0 auto;background:#0a0015;border:2px solid #a855f7;border-radius:16px;padding:12px;box-shadow:0 0 25px rgba(168,85,247,0.5);">
+  <div style="color:#d8b4fe;font-size:12px;letter-spacing:2px;text-align:center;margin-bottom:8px;font-weight:700;">◄ RIVE.CHESS ►</div>
+  <canvas id="rc-canvas" width="480" height="640" style="display:block;width:100%;height:auto;background:#000;border-radius:12px;touch-action:none;cursor:pointer;"></canvas>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('rc-canvas');
+  const ctx = c.getContext('2d');
+  let W = c.width, H = c.height;
+
+  let screen = 'menu';
+  let mode = null;
+  let opponent = null;
+  let board = {};
+  let currentPlayer = null;
+  let selected = null;
+  let validMoves = [];
+  let captured = {};
+  let running = false;
+  let gameEnded = false;
+  let isBotTurn = false;
+  let winner = null;
+
+  const PLAYERS_2 = {
+    white:{name:'БЕЛЫЕ',color:'#f5f5f5',light:'#ffffff',dark:'#bbb',emoji:'⚪'},
+    black:{name:'ЧЁРНЫЕ',color:'#1a1a1a',light:'#555',dark:'#000',emoji:'⚫'}
+  };
+  const PLAYERS_3 = {
+    red:{name:'КРАСНЫЕ',color:'#ef4444',light:'#fca5a5',dark:'#7f1d1d',emoji:'🔴'},
+    blue:{name:'СИНИЕ',color:'#3b82f6',light:'#93c5fd',dark:'#1e3a8a',emoji:'🔵'},
+    green:{name:'ЗЕЛЁНЫЕ',color:'#10b981',light:'#6ee7b7',dark:'#064e3b',emoji:'🟢'}
+  };
+  const PLAYERS = () => mode === 'two' ? PLAYERS_2 : PLAYERS_3;
+
+  let menuButtons = [];
+
+  function drawMenu() {
+    menuButtons = [];  // ← ФИКС №1
+    ctx.fillStyle = '#0a0015';
+    ctx.fillRect(0,0,W,H);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const grad = ctx.createLinearGradient(W*0.2,0,W*0.8,0);
+    grad.addColorStop(0,'#a855f7');
+    grad.addColorStop(0.5,'#ec4899');
+    grad.addColorStop(1,'#f59e0b');
+
+    ctx.font = 'bold 32px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = grad;
+    ctx.fillText('ШАХМАТЫ', W/2, 70);
+
+    ctx.font = '12px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = '#a855f7';
+    ctx.fillText('RIVE MOBILE CHESS', W/2, 105);
+
+    if (screen === 'menu') {
+      drawMenuButton(W/2 - 180, 170, 360, 70, '♔♚  НА ДВОИХ', 'primary', () => {
+        mode = 'two';
+        screen = 'submenu';
+        drawMenu();
+      });
+
+      drawMenuButton(W/2 - 180, 260, 360, 70, '♔♚♛ НА ТРОИХ', 'primary', () => {
+        mode = 'three';
+        screen = 'submenu';
+        drawMenu();
+      });
+
+      drawMenuButton(W/2 - 180, 350, 360, 55, '📖 ПРАВИЛА', 'secondary', () => {
+        alert('ШАХМАТЫ НА ДВОИХ:\nКлассическая доска 8×8. Цель — съесть короля.\nПешка превращается в ферзя.\n\nШАХМАТЫ НА ТРОИХ:\nГексагональная доска. Три армии: 🔴 🔵 🟢\nХод по кругу. Побеждает последний с королём.\n\nБОТ:\nИграет за противоположную сторону. Жадный ИИ.');
+      });
+    } else if (screen === 'submenu') {
+      ctx.font = 'bold 16px "Segoe UI",Arial,sans-serif';
+      ctx.fillStyle = '#d8b4fe';
+      ctx.fillText(mode === 'two' ? 'ШАХМАТЫ НА ДВОИХ' : 'ШАХМАТЫ НА ТРОИХ', W/2, 150);
+
+      drawMenuButton(W/2 - 180, 200, 360, 70, '👥  С ДРУГОМ', 'primary', () => {
+        opponent = 'friend';
+        startGame();
+      });
+
+      drawMenuButton(W/2 - 180, 290, 360, 70, '🤖  С БОТОМ', 'primary', () => {
+        opponent = 'bot';
+        startGame();
+      });
+
+      drawMenuButton(W/2 - 180, 380, 360, 55, '← НАЗАД', 'secondary', () => {
+        screen = 'menu';
+        drawMenu();
+      });
+    }
+
+    ctx.font = '10px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = '#a855f7';
+    ctx.globalAlpha = 0.5;
+    ctx.fillText('RIVE MOBILE © 2024', W/2, H - 25);
+    ctx.globalAlpha = 1;
+
+    drawSoundButton();
+  }
+
+  function drawMenuButton(x, y, w, h, text, type, onClick) {
+    const r = 12;
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+
+    if (type === 'primary') {
+      const grad = ctx.createLinearGradient(x,y,x+w,y);
+      grad.addColorStop(0,'#a855f7');
+      grad.addColorStop(1,'#ec4899');
+      ctx.fillStyle = grad;
+      ctx.fill();
+    } else {
+      ctx.fillStyle = 'rgba(168,85,247,0.1)';
+      ctx.fill();
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    ctx.font = 'bold 16px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w/2, y + h/2);
+
+    menuButtons.push({x, y, w, h, onClick});
+  }
+
+  let soundOn = true;
+  function drawSoundButton() {
+    const x = W - 55, y = 15, size = 40;
+    ctx.fillStyle = 'rgba(168,85,247,0.15)';
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x+size/2, y+size/2, size/2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '20px "Segoe UI",Arial,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#d8b4fe';
+    ctx.fillText(soundOn ? '🔊' : '🔇', x+size/2, y+size/2+1);
+
+    menuButtons.push({x, y, w:size, h:size, onClick: () => {
+      soundOn = !soundOn;
+      if (screen === 'game') drawGame(); else drawMenu();
+    }});
+  }
+
+  function drawMenuIcon() {
+    const x = W - 105, y = 15, size = 40;
+    ctx.fillStyle = 'rgba(168,85,247,0.15)';
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x+size/2, y+size/2, size/2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '20px "Segoe UI",Arial,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#d8b4fe';
+    ctx.fillText('☰', x+size/2, y+size/2+1);
+
+    menuButtons.push({x, y, w:size, h:size, onClick: () => {
+      if (confirm('Выйти в меню?')) {
+        running = false;
+        gameEnded = false;
+        screen = 'menu';
+        drawMenu();
+      }
+    }});
+  }
+
+  const HEX_N = 6;
+  let CELL = 50;
+  let HEX_SIZE = 22;
+  let centerX = 0, centerY = 0;
+  let boardTopY = 90;
+
+  function resizeForGame() {
+    if (mode === 'two') {
+      CELL = Math.floor(Math.min((W - 30) / 8, (H - 180) / 8));
+      centerX = W / 2;
+      centerY = boardTopY + (H - boardTopY - 60) / 2;
+    } else {
+      let size = 22;
+      let w, h;
+      do {
+        w = 2 * HEX_N * size * Math.sqrt(3) + 20;
+        h = 2 * HEX_N * size * 1.5 + 20;
+        if (w <= W - 20 && h <= H - boardTopY - 60) break;
+        size -= 0.5;
+      } while (size > 6);
+      HEX_SIZE = size;
+      centerX = W / 2;
+      centerY = boardTopY + (H - boardTopY - 60) / 2;
+    }
+  }
+
+  function setupBoard() {
+    board = {};
+    captured = {};
+    if (mode === 'two') {
+      currentPlayer = 'white';
+      captured = { white: [], black: [] };
+      const backRank = ['R','N','B','Q','K','B','N','R'];
+      for (let x = 0; x < 8; x++) {
+        board[`${x},0`] = { type: backRank[x], player: 'black' };
+        board[`${x},1`] = { type: 'P', player: 'black' };
+        board[`${x},6`] = { type: 'P', player: 'white' };
+        board[`${x},7`] = { type: backRank[x], player: 'white' };
+      }
+    } else {
+      currentPlayer = 'red';
+      captured = { red: [], blue: [], green: [] };
+      [
+        {q:-3,r:5,t:'R'},{q:-2,r:5,t:'N'},{q:-1,r:5,t:'B'},{q:0,r:5,t:'K'},{q:1,r:5,t:'Q'},{q:2,r:5,t:'B'},
+        {q:-4,r:4,t:'R'},{q:-3,r:4,t:'P'},{q:-2,r:4,t:'P'},{q:-1,r:4,t:'P'},{q:0,r:4,t:'P'},{q:1,r:4,t:'P'},{q:2,r:4,t:'P'},{q:3,r:4,t:'N'}
+      ].forEach(p => {
+        const k = `${p.q},${p.r}`;
+        if (hexInBoard(p.q,p.r)) board[k] = {type:p.t, player:'red'};
+      });
+      [
+        {q:-5,r:2,t:'R'},{q:-5,r:1,t:'N'},{q:-5,r:0,t:'B'},{q:-5,r:-1,t:'K'},{q:-5,r:-2,t:'Q'},{q:-5,r:-3,t:'B'},
+        {q:-4,r:3,t:'R'},{q:-4,r:2,t:'P'},{q:-4,r:1,t:'P'},{q:-4,r:0,t:'P'},{q:-4,r:-1,t:'P'},{q:-4,r:-2,t:'P'},{q:-4,r:-3,t:'P'},{q:-3,r:-3,t:'N'}
+      ].forEach(p => {
+        const k = `${p.q},${p.r}`;
+        if (hexInBoard(p.q,p.r) && !board[k]) board[k] = {type:p.t, player:'blue'};
+      });
+      [
+        {q:3,r:2,t:'R'},{q:3,r:1,t:'N'},{q:3,r:0,t:'B'},{q:3,r:-1,t:'K'},{q:3,r:-2,t:'Q'},{q:3,r:-3,t:'B'},
+        {q:2,r:3,t:'R'},{q:2,r:2,t:'P'},{q:2,r:1,t:'P'},{q:2,r:0,t:'P'},{q:2,r:-1,t:'P'},{q:2,r:-2,t:'P'},{q:2,r:-3,t:'P'},{q:1,r:3,t:'N'}
+      ].forEach(p => {
+        const k = `${p.q},${p.r}`;
+        if (hexInBoard(p.q,p.r) && !board[k]) board[k] = {type:p.t, player:'green'};
+      });
+    }
+  }
+
+  function hexInBoard(q,r) {
+    const s = -q-r;
+    return Math.abs(q) < HEX_N && Math.abs(r) < HEX_N && Math.abs(s) < HEX_N;
+  }
+  function allHexCells() {
+    const cells = [];
+    for (let q = -HEX_N+1; q < HEX_N; q++)
+      for (let r = -HEX_N+1; r < HEX_N; r++)
+        if (hexInBoard(q,r)) cells.push({q,r});
+    return cells;
+  }
+
+  function squareToPixel(x,y) {
+    return { x: centerX + (x-3.5)*CELL, y: centerY + (y-3.5)*CELL };
+  }
+  function hexToPixel(q,r) {
+    return {
+      x: centerX + HEX_SIZE * Math.sqrt(3) * (q + r/2),
+      y: centerY + HEX_SIZE * 1.5 * r
+    };
+  }
+  function hexCorners(cx,cy,size) {
+    const arr = [];
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI/180 * (60*i - 30);
+      arr.push({x: cx + size*Math.cos(a), y: cy + size*Math.sin(a)});
+    }
+    return arr;
+  }
+  function drawHex(cx,cy,size,fill,stroke,lw) {
+    const corners = hexCorners(cx,cy,size);
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < 6; i++) ctx.lineTo(corners[i].x, corners[i].y);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw||1; ctx.stroke(); }
+  }
+
+  function drawGame() {
+    menuButtons = [];  // ← ФИКС №2
+    ctx.fillStyle = '#0a0015';
+    ctx.fillRect(0,0,W,H);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 14px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = '#d8b4fe';
+    ctx.fillText('◄ RIVE.CHESS ►', 15, 35);
+
+    const p = PLAYERS()[currentPlayer];
+    let statusText = `Ход: ${p.emoji} ${p.name}`;
+    if (opponent === 'bot' && isBot(currentPlayer)) statusText += ' (🤖)';
+
+    ctx.font = 'bold 13px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = p.color;
+    ctx.fillText(statusText, 15, 65);
+
+    if (mode === 'two') drawTwoBoard();
+    else drawThreeBoard();
+
+    drawPlayersPanel();
+
+    if (selected) {
+      if (mode === 'two') drawSelectedTwo();
+      else drawSelectedThree();
+    }
+
+    drawSoundButton();
+    drawMenuIcon();
+
+    if (gameEnded) drawGameOver();
+  }
+
+  function drawPlayersPanel() {
+    const y = H - 45;
+    const players = mode === 'two' ? ['white','black'] : ['red','blue','green'];
+    const boxW = (W - 40) / players.length;
+    players.forEach((pl, i) => {
+      const x = 20 + i * boxW;
+      const info = PLAYERS()[pl];
+      const isActive = pl === currentPlayer && !gameEnded;
+
+      ctx.fillStyle = isActive ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.05)';
+      ctx.fillRect(x, y, boxW - 6, 35);
+
+      ctx.strokeStyle = isActive ? info.color : 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, boxW - 6, 35);
+
+      ctx.font = 'bold 10px "Segoe UI",Arial,sans-serif';
+      ctx.fillStyle = info.color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(info.emoji + ' ' + info.name, x + (boxW-6)/2, y + 12);
+
+      const caps = captured[pl] || [];
+      ctx.font = '11px "Segoe UI Symbol",serif';
+      const capText = caps.slice(-8).map(c => getSymbol(c.type)).join('');
+      ctx.fillStyle = '#ccc';
+      ctx.fillText(capText, x + (boxW-6)/2, y + 26);
+    });
+  }
+
+  function drawTwoBoard() {
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const {x:px,y:py} = squareToPixel(x,y);
+        const isLight = (x+y)%2 === 0;
+        ctx.fillStyle = isLight ? '#ebd9b0' : '#7d5636';
+        ctx.fillRect(px-CELL/2, py-CELL/2, CELL, CELL);
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px-CELL/2+0.5, py-CELL/2+0.5, CELL-1, CELL-1);
+      }
+    }
+    ctx.strokeStyle = 'rgba(168,85,247,0.4)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(centerX - 4*CELL, centerY - 4*CELL, 8*CELL, 8*CELL);
+
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const piece = board[`${x},${y}`];
+        if (!piece) continue;
+        const {x:px,y:py} = squareToPixel(x,y);
+        drawPiece(px, py, piece, CELL*0.4);
+      }
+    }
+  }
+
+  function drawThreeBoard() {
+    allHexCells().forEach(({q,r}) => {
+      const {x,y} = hexToPixel(q,r);
+      const piece = board[`${q},${r}`];
+      const isLight = (q+r+100)%2 === 0;
+      let fill = isLight ? '#ebd9b0' : '#7d5636';
+      if (piece && piece.player === 'red') fill = isLight ? '#f4c4c4' : '#a85a5a';
+      else if (piece && piece.player === 'blue') fill = isLight ? '#c4d4f4' : '#5a6ba8';
+      else if (piece && piece.player === 'green') fill = isLight ? '#c4f4d4' : '#5aa86b';
+      drawHex(x, y, HEX_SIZE-1, fill, 'rgba(0,0,0,0.3)', 1.5);
+      if (piece) drawPiece(x, y, piece, HEX_SIZE*0.55);
+    });
+  }
+
+  function drawPiece(cx,cy,piece,r) {
+    const color = PLAYERS()[piece.player];
+    ctx.shadowColor = color.color;
+    ctx.shadowBlur = 8;
+    const grad = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.1, cx, cy, r);
+    grad.addColorStop(0, color.light);
+    grad.addColorStop(1, color.color);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = piece.player === 'white' ? '#999' : 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = `bold ${Math.round(r*1.3)}px "Segoe UI Symbol",serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (piece.player === 'white') ctx.fillStyle = '#000';
+    else ctx.fillStyle = '#fff';
+    ctx.fillText(getSymbol(piece.type), cx, cy+1);
+  }
+
+  function drawSelectedTwo() {
+    const {x:sx,y:sy} = squareToPixel(selected.x, selected.y);
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(sx-CELL/2+2, sy-CELL/2+2, CELL-4, CELL-4);
+
+    validMoves.forEach(m => {
+      const {x:mx,y:my} = squareToPixel(m.x, m.y);
+      if (m.capture) {
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(mx, my, CELL*0.4, 0, Math.PI*2);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(251,191,36,0.7)';
+        ctx.beginPath();
+        ctx.arc(mx, my, CELL*0.15, 0, Math.PI*2);
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawSelectedThree() {
+    const {x:sx,y:sy} = hexToPixel(selected.q, selected.r);
+    drawHex(sx, sy, HEX_SIZE, null, '#a855f7', 4);
+    validMoves.forEach(m => {
+      const {x:mx,y:my} = hexToPixel(m.q, m.r);
+      if (m.capture) {
+        drawHex(mx, my, HEX_SIZE-3, 'rgba(239,68,68,0.5)', '#ef4444', 3);
+      } else {
+        ctx.fillStyle = 'rgba(251,191,36,0.7)';
+        ctx.beginPath();
+        ctx.arc(mx, my, HEX_SIZE*0.25, 0, Math.PI*2);
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawGameOver() {
+    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.fillRect(0, 0, W, H);
+
+    let title = 'НИЧЬЯ';
+    let color = '#a855f7';
+    if (winner) {
+      title = `ПОБЕДА ${PLAYERS()[winner].emoji} ${PLAYERS()[winner].name}`;
+      color = PLAYERS()[winner].color;
+    }
+
+    ctx.font = 'bold 26px "Segoe UI",Arial,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color;
+    ctx.fillText(title, W/2, H/2 - 60);
+
+    // menuButtons уже очищен в drawGame() — тут просто добавляем
+    drawMenuButton(W/2-150, H/2-10, 300, 60, '↻ ИГРАТЬ СНОВА', 'primary', () => {
+      startGame();
+    });
+    drawMenuButton(W/2-150, H/2+65, 300, 50, '☰ В МЕНЮ', 'secondary', () => {
+      screen = 'menu';
+      gameEnded = false;
+      running = false;
+      drawMenu();
+    });
+  }
+
+  function getSymbol(t) {
+    return {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙'}[t] || t;
+  }
+
+  function getMovesTwo(x, y) {
+    const piece = board[`${x},${y}`];
+    if (!piece) return [];
+    const moves = [];
+    const player = piece.player;
+    const tryAdd = (tx, ty, captureOnly = false) => {
+      if (tx < 0 || tx >= 8 || ty < 0 || ty >= 8) return false;
+      const t = board[`${tx},${ty}`];
+      if (t) {
+        if (t.player !== player) moves.push({x:tx,y:ty,capture:true});
+        return false;
+      } else if (!captureOnly) {
+        moves.push({x:tx,y:ty,capture:false});
+      }
+      return true;
+    };
+    if (piece.type === 'K') {
+      [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].forEach(([dx,dy]) => tryAdd(x+dx,y+dy));
+    } else if (piece.type === 'Q') {
+      [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].forEach(([dx,dy]) => {
+        let tx = x+dx, ty = y+dy;
+        while (tryAdd(tx,ty)) { tx += dx; ty += dy; }
+      });
+    } else if (piece.type === 'R') {
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy]) => {
+        let tx = x+dx, ty = y+dy;
+        while (tryAdd(tx,ty)) { tx += dx; ty += dy; }
+      });
+    } else if (piece.type === 'B') {
+      [[1,1],[-1,-1],[1,-1],[-1,1]].forEach(([dx,dy]) => {
+        let tx = x+dx, ty = y+dy;
+        while (tryAdd(tx,ty)) { tx += dx; ty += dy; }
+      });
+    } else if (piece.type === 'N') {
+      [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([dx,dy]) => tryAdd(x+dx, y+dy));
+    } else if (piece.type === 'P') {
+      const dir = player === 'white' ? -1 : 1;
+      if (tryAdd(x, y+dir)) {
+        const startRow = player === 'white' ? 6 : 1;
+        if (y === startRow) tryAdd(x, y+dir*2);
+      }
+      tryAdd(x+1, y+dir, true);
+      tryAdd(x-1, y+dir, true);
+    }
+    return moves;
+  }
+
+  const HEX_DIRS = [{q:1,r:0},{q:1,r:-1},{q:0,r:-1},{q:-1,r:0},{q:-1,r:1},{q:0,r:1}];
+
+  function getPawnDir(player) {
+    if (player === 'red')   return {forward:{q:0,r:-1}, captures:[{q:1,r:-1},{q:-1,r:0}]};
+    if (player === 'blue')  return {forward:{q:1,r:0},  captures:[{q:1,r:-1},{q:0,r:1}]};
+    return {forward:{q:0,r:1}, captures:[{q:-1,r:1},{q:1,r:0}]};
+  }
+
+  function getMovesThree(q, r) {
+    const piece = board[`${q},${r}`];
+    if (!piece) return [];
+    const moves = [];
+    const player = piece.player;
+    const type = piece.type;
+    const tryAdd = (tq, tr, captureOnly = false) => {
+      if (!hexInBoard(tq, tr)) return false;
+      const t = board[`${tq},${tr}`];
+      if (t) {
+        if (t.player !== player && !captureOnly) moves.push({q:tq,r:tr,capture:true});
+        return false;
+      } else if (!captureOnly) {
+        moves.push({q:tq,r:tr,capture:false});
+      }
+      return true;
+    };
+    if (type === 'K') HEX_DIRS.forEach(d => tryAdd(q+d.q, r+d.r));
+    else if (type === 'Q' || type === 'R') {
+      HEX_DIRS.forEach(d => {
+        let tq = q+d.q, tr = r+d.r;
+        while (tryAdd(tq,tr)) { tq += d.q; tr += d.r; }
+      });
+    } else if (type === 'B') {
+      [{q:1,r:1},{q:-1,r:-1},{q:2,r:-1},{q:-2,r:1},{q:1,r:-2},{q:-1,r:2}].forEach(d => {
+        let tq = q+d.q, tr = r+d.r;
+        while (tryAdd(tq,tr)) { tq += d.q; tr += d.r; }
+      });
+    } else if (type === 'N') {
+      [{q:2,r:-1},{q:1,r:1},{q:-1,r:2},{q:-2,r:1},{q:-1,r:-1},{q:1,r:-2}].forEach(d => {
+        const tq = q+d.q, tr = r+d.r;
+        if (!hexInBoard(tq,tr)) return;
+        const t = board[`${tq},${tr}`];
+        if (!t || t.player !== player) moves.push({q:tq,r:tr,capture:!!t});
+      });
+    } else if (type === 'P') {
+      const dirs = getPawnDir(player);
+      const fq = q+dirs.forward.q, fr = r+dirs.forward.r;
+      if (hexInBoard(fq,fr) && !board[`${fq},${fr}`]) moves.push({q:fq,r:fr,capture:false});
+      dirs.captures.forEach(d => {
+        const tq = q+d.q, tr = r+d.r;
+        if (!hexInBoard(tq,tr)) return;
+        const t = board[`${tq},${tr}`];
+        if (t && t.player !== player) moves.push({q:tq,r:tr,capture:true});
+      });
+    }
+    const seen = new Set();
+    return moves.filter(m => {
+      const k = `${m.q},${m.r}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  function getMoves(pos) {
+    return mode === 'two' ? getMovesTwo(pos.x, pos.y) : getMovesThree(pos.q, pos.r);
+  }
+
+  function getClickPos(mx, my) {
+    if (mode === 'two') {
+      const x = Math.floor((mx - centerX + 4*CELL) / CELL);
+      const y = Math.floor((my - centerY + 4*CELL) / CELL);
+      if (x < 0 || x >= 8 || y < 0 || y >= 8) return null;
+      return { x, y };
+    } else {
+      let best = null, bestDist = Infinity;
+      allHexCells().forEach(({q,r}) => {
+        const p = hexToPixel(q,r);
+        const d = Math.hypot(mx-p.x, my-p.y);
+        if (d < bestDist && d < HEX_SIZE) { bestDist = d; best = {q,r}; }
+      });
+      return best;
+    }
+  }
+
+  function handleClick(mx, my) {
+    // Кнопки интерфейса
+    for (const btn of menuButtons) {
+      if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+        // ← ФИКС №3: в игре реагируем только на кнопки в верхней панели (звук и меню)
+        if (screen === 'game' && !gameEnded && btn.y > 70) continue;
+        btn.onClick();
+        return;
+      }
+    }
+
+    if (screen !== 'game' || !running || gameEnded || isBotTurn) return;
+
+    const pos = getClickPos(mx, my);
+    if (!pos) { selected = null; validMoves = []; drawGame(); return; }
+
+    const key = mode === 'two' ? `${pos.x},${pos.y}` : `${pos.q},${pos.r}`;
+    const cell = board[key];
+
+    if (selected) {
+      const mv = validMoves.find(m => mode === 'two'
+        ? (m.x === pos.x && m.y === pos.y)
+        : (m.q === pos.q && m.r === pos.r));
+      if (mv) { makeMove(selected, pos); return; }
+    }
+
+    if (cell && cell.player === currentPlayer) {
+      selected = pos;
+      validMoves = getMoves(pos);
+      drawGame();
+      return;
+    }
+
+    selected = null;
+    validMoves = [];
+    drawGame();
+  }
+
+  function makeMove(from, to) {
+    const fromKey = mode === 'two' ? `${from.x},${from.y}` : `${from.q},${from.r}`;
+    const toKey = mode === 'two' ? `${to.x},${to.y}` : `${to.q},${to.r}`;
+    const piece = board[fromKey];
+    const target = board[toKey];
+
+    if (target) {
+      captured[piece.player].push({type: target.type, player: target.player});
+      if (target.type === 'K') eliminatePlayer(target.player);
+    }
+
+    board[toKey] = piece;
+    board[fromKey] = null;
+
+    if (piece.type === 'P' && mode === 'two') {
+      const promoteRow = piece.player === 'white' ? 0 : 7;
+      if (to.y === promoteRow) board[toKey] = {type: 'Q', player: piece.player};
+    }
+
+    selected = null;
+    validMoves = [];
+
+    if (checkGameEnd()) { drawGame(); return; }
+    nextPlayer();
+    drawGame();
+
+    if (opponent === 'bot' && !gameEnded && isBot(currentPlayer)) {
+      isBotTurn = true;
+      setTimeout(botMove, 400);
+    }
+  }
+
+  function eliminatePlayer(player) {
+    Object.keys(board).forEach(k => {
+      const c = board[k];
+      if (c && c.player === player) board[k] = null;
+    });
+  }
+
+  function checkGameEnd() {
+    const kingsAlive = {};
+    Object.values(board).forEach(c => {
+      if (c && c.type === 'K') kingsAlive[c.player] = (kingsAlive[c.player] || 0) + 1;
+    });
+    const alive = Object.entries(kingsAlive).filter(([p, c]) => c > 0);
+    if (alive.length <= 1) {
+      gameEnded = true;
+      winner = alive.length === 1 ? alive[0][0] : null;
+      running = false;
+      return true;
+    }
+    return false;
+  }
+
+  function nextPlayer() {
+    const order = mode === 'two' ? ['white','black'] : ['red','blue','green'];
+    let idx = order.indexOf(currentPlayer);
+    for (let i = 1; i <= order.length; i++) {
+      const next = order[(idx+i) % order.length];
+      const hasKing = Object.values(board).some(c => c && c.player === next && c.type === 'K');
+      if (hasKing) { currentPlayer = next; return; }
+    }
+  }
+
+  function isBot(player) {
+    if (opponent !== 'bot') return false;
+    if (mode === 'two') return player === 'black';
+    return player === 'blue' || player === 'green';
+  }
+
+  function botMove() {
+    if (!running || gameEnded) { isBotTurn = false; return; }
+    const allMoves = [];
+    const cells = mode === 'two'
+      ? (() => { const a = []; for (let x=0;x<8;x++) for (let y=0;y<8;y++) a.push({x,y}); return a; })()
+      : allHexCells();
+
+    cells.forEach(pos => {
+      const key = mode === 'two' ? `${pos.x},${pos.y}` : `${pos.q},${pos.r}`;
+      const piece = board[key];
+      if (!piece || piece.player !== currentPlayer) return;
+      getMoves(pos).forEach(m => {
+        let score = 0;
+        if (m.capture) {
+          const t = board[mode === 'two' ? `${m.x},${m.y}` : `${m.q},${m.r}`];
+          if (t) {
+            const vals = {P:1,N:3,B:3,R:5,Q:9,K:1000};
+            score = vals[t.type] * 10;
+          }
+        }
+        allMoves.push({from: pos, to: m, score});
+      });
+    });
+
+    if (allMoves.length === 0) {
+      isBotTurn = false;
+      nextPlayer();
+      drawGame();
+      if (isBot(currentPlayer)) { isBotTurn = true; setTimeout(botMove, 400); }
+      return;
+    }
+
+    allMoves.sort((a,b) => b.score - a.score);
+    const top = allMoves.slice(0, Math.min(3, allMoves.length));
+    const choice = top[Math.floor(Math.random() * top.length)];
+
+    makeMove(choice.from, choice.to);
+    isBotTurn = false;
+  }
+
+  function startGame() {
+    screen = 'game';
+    running = true;
+    gameEnded = false;
+    winner = null;
+    isBotTurn = false;
+    selected = null;
+    validMoves = [];
+    setupBoard();
+    resizeForGame();
+    drawGame();
+
+    if (opponent === 'bot' && isBot(currentPlayer)) {
+      isBotTurn = true;
+      setTimeout(botMove, 500);
+    }
+  }
+
+  c.addEventListener('click', e => {
+    const rect = c.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const my = (e.clientY - rect.top) * (H / rect.height);
+    handleClick(mx, my);
+  });
+
+  c.addEventListener('touchend', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    const rect = c.getBoundingClientRect();
+    const mx = (t.clientX - rect.left) * (W / rect.width);
+    const my = (t.clientY - rect.top) * (H / rect.height);
+    handleClick(mx, my);
+  }, { passive: false });
+
+  drawMenu();
+})();
+</script>
