@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Pac-Man — RIVE MOBILE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+  }
+
+  .pac-wrap {
+    background: #000;
+    border: 2px solid #ff0;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 0 25px #ff0, 0 0 50px rgba(255,255,0,0.3);
+    max-width: 460px;
+    width: 100%;
+  }
+
+  .pac-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    color: #ff0;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px #ff0;
+  }
+
+  .top-btns { display: flex; gap: 6px; }
+
+  .mini-btn {
+    background: transparent;
+    border: 1px solid #ff0;
+    color: #ff0;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .mini-btn:hover { background: #ff0; color: #000; }
+  .mini-btn.muted { color: #666; border-color: #666; }
+
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    color: #ff0;
+    font-size: 13px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 6px #ff0;
+  }
+  .stats b { color: #fff; }
+
+  .canvas-wrap { position: relative; }
+
+  canvas {
+    display: block;
+    background: #000;
+    border: 1px solid rgba(255,255,0,0.2);
+    width: 100%;
+    height: auto;
+    touch-action: none;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .overlay h2 {
+    color: #ff0;
+    font-size: 22px;
+    letter-spacing: 4px;
+    text-shadow: 0 0 20px #ff0;
+  }
+  .overlay p {
+    color: #ff0;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    line-height: 1.8;
+    opacity: 0.85;
+  }
+  .overlay button {
+    background: transparent;
+    color: #ff0;
+    border: 2px solid #ff0;
+    padding: 10px 24px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 0 15px rgba(255,255,0,0.5);
+  }
+  .overlay button:hover {
+    background: #ff0;
+    color: #000;
+  }
+
+  .name-input {
+    background: #000;
+    border: 2px solid #ff0;
+    color: #ff0;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-align: center;
+    text-transform: uppercase;
+    width: 200px;
+    outline: none;
+  }
+  .name-input::placeholder { color: #666; }
+
+  /* Таблица лидеров */
+  .leaderboard {
+    width: 100%;
+    max-width: 280px;
+    margin: 6px 0;
+  }
+  .lb-title {
+    color: #ff0;
+    font-size: 12px;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 8px #ff0;
+  }
+  .lb-list { list-style: none; }
+  .lb-row {
+    display: flex;
+    justify-content: space-between;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255,255,0,0.1);
+  }
+  .lb-row.top1 { color: #ffd700; text-shadow: 0 0 6px #ffd700; }
+  .lb-row.top2 { color: #c0c0c0; }
+  .lb-row.top3 { color: #cd7f32; }
+  .lb-rank { width: 24px; text-align: left; }
+  .lb-name { flex: 1; text-align: left; padding-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-score { color: #ff0; font-weight: bold; }
+
+  .empty-lb {
+    color: #666;
+    font-size: 10px;
+    padding: 10px;
+    letter-spacing: 1px;
+  }
+
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 55px);
+    grid-template-rows: repeat(2, 55px);
+    gap: 6px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+  .dpad-btn {
+    background: rgba(255,255,0,0.05);
+    border: 1px solid rgba(255,255,0,0.4);
+    color: #ff0;
+    font-size: 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .dpad-btn:active { background: #ff0; color: #000; }
+  .dpad-btn.up    { grid-column: 2; grid-row: 1; }
+  .dpad-btn.left  { grid-column: 1; grid-row: 2; }
+  .dpad-btn.down  { grid-column: 2; grid-row: 2; }
+  .dpad-btn.right { grid-column: 3; grid-row: 2; }
+
+  .hint {
+    text-align: center;
+    color: #ff0;
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-top: 10px;
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+<div class="pac-wrap">
+  <div class="pac-header">
+    <span>◄ RIVE.PACMAN ►</span>
+    <div class="top-btns">
+      <button class="mini-btn" id="soundBtn">🔊</button>
+      <button class="mini-btn" id="lbBtn">🏆</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <span>СЧЁТ: <b id="score">0</b></span>
+    <span>ЖИЗНИ: <b id="lives">♥♥♥</b></span>
+    <span>УР: <b id="level">1</b></span>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="game" width="420" height="460"></canvas>
+    <div class="overlay" id="overlay">
+      <h2>PAC-MAN</h2>
+      <p>СТРЕЛКИ / WASD / СВАЙПЫ<br>СЪЕШЬ ВСЕ ТОЧКИ<br>⚡ ЭНЕРГЕТИК = ОХОТА НА ПРИЗРАКОВ</p>
+      <button id="startBtn">▶ СТАРТ</button>
+    </div>
+  </div>
+
+  <div class="dpad">
+    <button class="dpad-btn up"    data-dir="up">▲</button>
+    <button class="dpad-btn left"  data-dir="left">◄</button>
+    <button class="dpad-btn down"  data-dir="down">▼</button>
+    <button class="dpad-btn right" data-dir="right">►</button>
+  </div>
+
+  <div class="hint">RIVE MOBILE © 2024</div>
+</div>
+
+<script>
+(function() {
+  // ══════════════ ЗВУК ══════════════
+  const Sound = {
+    ctx: null, muted: false,
+    sirenOsc: null, sirenLfo: null, sirenGain: null,
+
+    init() {
+      if (!this.ctx) {
+        try {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) { this.muted = true; }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    },
+
+    tone(freq, dur, type, vol, freqEnd) {
+      if (this.muted || !this.ctx) return;
+      try {
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(freq, t);
+        if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+        g.gain.setValueAtTime(vol || 0.08, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(t); o.stop(t + dur);
+      } catch(e) {}
+    },
+
+    waka() {
+      if (this.muted || !this.ctx) return;
+      this.tone(440, 0.06, 'square', 0.06, 220);
+    },
+
+    powerPellet() {
+      [220, 330, 440].forEach((f, i) => setTimeout(() => this.tone(f, 0.1, 'square', 0.09), i * 50));
+    },
+
+    eatGhost() {
+      this.tone(200, 0.3, 'sawtooth', 0.1, 1200);
+    },
+
+    death() {
+      this.tone(600, 0.8, 'square', 0.12, 80);
+    },
+
+    start() {
+      [523, 659, 784, 1047, 784, 1047].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.15, 'square', 0.09), i * 120));
+    },
+
+    levelUp() {
+      [523, 659, 784, 1047, 1319].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.12, 'square', 0.09), i * 80));
+    },
+
+    gameOver() {
+      [392, 349, 311, 262].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.25, 'triangle', 0.12), i * 200));
+    },
+
+    startSiren() {
+      if (this.muted || !this.ctx) return;
+      this.stopSiren();
+      try {
+        const t = this.ctx.currentTime;
+        this.sirenOsc = this.ctx.createOscillator();
+        this.sirenLfo = this.ctx.createOscillator();
+        this.sirenGain = this.ctx.createGain();
+        const lfoGain = this.ctx.createGain();
+
+        this.sirenOsc.type = 'sine';
+        this.sirenOsc.frequency.value = 220;
+        this.sirenLfo.type = 'sine';
+        this.sirenLfo.frequency.value = 1.5;
+        lfoGain.gain.value = 40;
+        this.sirenGain.gain.value = 0.015;
+
+        this.sirenLfo.connect(lfoGain).connect(this.sirenOsc.frequency);
+        this.sirenOsc.connect(this.sirenGain).connect(this.ctx.destination);
+        this.sirenOsc.start(t);
+        this.sirenLfo.start(t);
+      } catch(e) {}
+    },
+
+    setSirenSpeed(f) {
+      if (this.sirenLfo && !this.muted) this.sirenLfo.frequency.value = f;
+    },
+
+    stopSiren() {
+      try { if (this.sirenOsc) this.sirenOsc.stop(); } catch(e) {}
+      try { if (this.sirenLfo) this.sirenLfo.stop(); } catch(e) {}
+      this.sirenOsc = null;
+      this.sirenLfo = null;
+    }
+  };
+
+  // ══════════════ ЛИДЕРБОРД ══════════════
+  const Leaderboard = {
+    KEY: 'rivePacmanLeaders',
+    MAX: 10,
+
+    load() {
+      try {
+        const data = localStorage.getItem(this.KEY);
+        return data ? JSON.parse(data) : [];
+      } catch(e) { return []; }
+    },
+
+    save(list) {
+      try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch(e) {}
+    },
+
+    add(name, score, level) {
+      const list = this.load();
+      const entry = {
+        name: (name || 'ИГРОК').toUpperCase().slice(0, 10),
+        score,
+        level,
+        date: Date.now()
+      };
+      list.push(entry);
+      list.sort((a, b) => b.score - a.score);
+      const trimmed = list.slice(0, this.MAX);
+      this.save(trimmed);
+      return trimmed.indexOf(entry);
+    },
+
+    getHigh() {
+      const list = this.load();
+      return list.length ? list[0].score : 0;
+    }
+  };
+
+  // ══════════════ ИГРА ══════════════
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const levelEl = document.getElementById('level');
+  const soundBtn = document.getElementById('soundBtn');
+  const lbBtn = document.getElementById('lbBtn');
+
+  // ─── Карта: 21 столбец × 23 строки ───
+  // # = стена, . = точка, o = энергетик, ' ' = пусто, - = дверь призраков
+  const BASE_MAP = [
+    "#####################",
+    "#.........#.........#",
+    "#o##.####.#.####.##o#",
+    "#...................#",
+    "#.##.#.#######.#.##.#",
+    "#....#....#....#....#",
+    "####.####.#.####.####",
+    "   #.#.........#.#   ",
+    "####.#.##---##.#.####",
+    "    ...#     #...    ",
+    "####.#.#######.#.####",
+    "   #.#.........#.#   ",
+    "####.#.#######.#.####",
+    "#.........#.........#",
+    "#o##.####.#.####.##o#",
+    "#..#..... P .....#..#",
+    "##.#.#.#######.#.#.##",
+    "#....#....#....#....#",
+    "#.########.#.########",
+    "#...................#",
+    "#####################"
+  ];
+
+  // P — старт игрока
+  let map = [];
+  let COLS = 0, ROWS = 0;
+  let CELL = 20;
+  let W = 0, H = 0;
+
+  let score = 0, lives = 3, level = 1;
+  let running = false;
+  let rafId = null;
+  let dotsLeft = 0;
+  let powerTimer = 0;
+  let wakaFlip = 0;
+  let playerStart = {x: 10, y: 15};
+
+  let pacman = { x: 10, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, mouth: 0, mouthDir: 1, speed: 0.13 };
+
+  const ghostColors = ['#ff0000', '#ffb8ff', '#00ffff', '#ffb851'];
+  const ghostHome = [
+    {x: 9,  y: 8},
+    {x: 10, y: 8},
+    {x: 11, y: 8},
+    {x: 10, y: 8}
+  ];
+  let ghosts = [];
+
+  function parseMap() {
+    const raw = BASE_MAP;
+    ROWS = raw.length;
+    COLS = raw[0].length;
+    W = COLS * CELL;
+    H = ROWS * CELL;
+    canvas.width = W;
+    canvas.height = H;
+
+    map = [];
+    dotsLeft = 0;
+    let ps = {x: 10, y: 15};
+
+    for (let y = 0; y < ROWS; y++) {
+      const row = [];
+      for (let x = 0; x < COLS; x++) {
+        const ch = raw[y][x];
+        if (ch === '#') row.push(1);
+        else if (ch === '.') { row.push(2); dotsLeft++; }
+        else if (ch === 'o') { row.push(3); dotsLeft++; }
+        else if (ch === '-') row.push(4);
+        else if (ch === 'P') { ps = {x, y}; row.push(0); }
+        else row.push(0);
+      }
+      map.push(row);
+    }
+    playerStart = ps;
+  }
+
+  function isWall(x, y) {
+    if (y < 0 || y >= ROWS) return true;
+    const xi = Math.round(x);
+    if (xi < 0 || xi >= COLS) return false; // туннель
+    const t = map[y] && map[y][xi];
+    return t === 1 || t === 4;
+  }
+
+  function wrapX(x) {
+    if (x < -1) return COLS;
+    if (x > COLS) return -1;
+    return x;
+  }
+
+  function resetEntities() {
+    pacman.x = playerStart.x;
+    pacman.y = playerStart.y;
+    pacman.dx = 0; pacman.dy = 0;
+    pacman.nextDx = 0; pacman.nextDy = 0;
+    pacman.mouth = 0; pacman.mouthDir = 1;
+
+    ghosts = ghostColors.map((color, i) => ({
+      x: ghostHome[i].x,
+      y: ghostHome[i].y,
+      dx: 0,
+      dy: (i === 3) ? -1 : 0,
+      color,
+      scared: false,
+      eaten: false,
+      home: ghostHome[i],
+      releaseDelay: i * 40
+    }));
+
+    powerTimer = 0;
+  }
+
+  // ─── Отрисовка ───
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // карта
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const t = map[y][x];
+        const px = x * CELL;
+        const py = y * CELL;
+
+        if (t === 1) {
+          ctx.fillStyle = '#1919a6';
+          ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+          ctx.strokeStyle = '#4040ff';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px + 1.5, py + 1.5, CELL - 3, CELL - 3);
+        } else if (t === 2) {
+          ctx.fillStyle = '#ffb897';
+          ctx.beginPath();
+          ctx.arc(px + CELL/2, py + CELL/2, 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (t === 3) {
+          const pulse = Math.sin(Date.now() / 150) * 2;
+          ctx.fillStyle = '#ffb897';
+          ctx.shadowColor = '#ffb897';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(px + CELL/2, py + CELL/2, 5 + pulse, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        } else if (t === 4) {
+          ctx.fillStyle = '#ffb8ff';
+          ctx.fillRect(px, py + CELL/2 - 1, CELL, 2);
+        }
+      }
+    }
+
+    // призраки
+    ghosts.forEach(g => {
+      if (g.eaten) return;
+      const px = g.x * CELL + CELL/2;
+      const py = g.y * CELL + CELL/2;
+      const R = CELL/2 - 2;
+
+      let color = g.scared ? '#2121de' : g.color;
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+
+      ctx.beginPath();
+      ctx.arc(px, py - 2, R, Math.PI, 0);
+      ctx.lineTo(px + R, py + R - 2);
+      const bot = py + R - 2;
+      const step = (R * 2) / 3;
+      ctx.lineTo(px + R - step * 0.5, bot - 3);
+      ctx.lineTo(px + R - step, bot);
+      ctx.lineTo(px + R - step * 1.5, bot - 3);
+      ctx.lineTo(px + R - step * 2, bot);
+      ctx.lineTo(px - R + step * 0.5, bot - 3);
+      ctx.lineTo(px - R, bot);
+      ctx.closePath();
+      ctx.fill();
+
+      // глаза
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(px - 3, py - 3, 3, 0, Math.PI * 2);
+      ctx.arc(px + 3, py - 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = g.scared ? '#ff0000' : '#0000ff';
+      const ex = g.dx > 0 ? 1 : g.dx < 0 ? -1 : 0;
+      const ey = g.dy > 0 ? 1 : g.dy < 0 ? -1 : 0;
+      ctx.beginPath();
+      ctx.arc(px - 3 + ex, py - 3 + ey, 1.5, 0, Math.PI * 2);
+      ctx.arc(px + 3 + ex, py - 3 + ey, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // Пакман
+    const px = pacman.x * CELL + CELL/2;
+    const py = pacman.y * CELL + CELL/2;
+    ctx.fillStyle = '#ff0';
+    ctx.shadowColor = '#ff0';
+    ctx.shadowBlur = 12;
+
+    let angle = 0;
+    if (pacman.dx > 0) angle = 0;
+    else if (pacman.dx < 0) angle = Math.PI;
+    else if (pacman.dy > 0) angle = Math.PI / 2;
+    else if (pacman.dy < 0) angle = -Math.PI / 2;
+
+    const mouth = Math.abs(pacman.mouth) * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.arc(px, py, CELL/2 - 2, angle + mouth, angle + Math.PI * 2 - mouth);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // ─── Обновление ───
+  function update() {
+    // рот
+    pacman.mouth += pacman.mouthDir * 0.12;
+    if (pacman.mouth > 1 || pacman.mouth < 0) pacman.mouthDir *= -1;
+
+    // Пакман — движение только когда в центре клетки
+    const onGrid = Math.abs(pacman.x - Math.round(pacman.x)) < 0.05 &&
+                   Math.abs(pacman.y - Math.round(pacman.y)) < 0.05;
+
+    if (onGrid) {
+      pacman.x = Math.round(pacman.x);
+      pacman.y = Math.round(pacman.y);
+
+      // пробуем повернуть по nextDir
+      if (pacman.nextDx !== 0 || pacman.nextDy !== 0) {
+        if (!isWall(pacman.x + pacman.nextDx, pacman.y + pacman.nextDy)) {
+          pacman.dx = pacman.nextDx;
+          pacman.dy = pacman.nextDy;
+          pacman.nextDx = 0;
+          pacman.nextDy = 0;
+        }
+      }
+
+      // стена впереди — стоп
+      if (pacman.dx !== 0 || pacman.dy !== 0) {
+        if (isWall(pacman.x + pacman.dx, pacman.y + pacman.dy)) {
+          pacman.dx = 0;
+          pacman.dy = 0;
+        }
+      }
+    }
+
+    pacman.x += pacman.dx * pacman.speed;
+    pacman.y += pacman.dy * pacman.speed;
+    pacman.x = wrapX(pacman.x);
+
+    // съедаем точки
+    const gx = Math.round(pacman.x);
+    const gy = Math.round(pacman.y);
+    if (Math.abs(pacman.x - gx) < 0.4 && Math.abs(pacman.y - gy) < 0.4) {
+      if (map[gy] && (map[gy][gx] === 2 || map[gy][gx] === 3)) {
+        if (map[gy][gx] === 2) {
+          score += 10;
+          wakaFlip++;
+          if (wakaFlip % 2 === 0) Sound.waka();
+        } else {
+          score += 50;
+          powerTimer = 420;
+          Sound.powerPellet();
+          ghosts.forEach(g => { if (!g.eaten) g.scared = true; });
+        }
+        map[gy][gx] = 0;
+        dotsLeft--;
+        scoreEl.textContent = score;
+
+        if (dotsLeft === 0) {
+          nextLevel();
+          return;
+        }
+      }
+    }
+
+    // таймер энергетика
+    if (powerTimer > 0) {
+      powerTimer--;
+      Sound.setSirenSpeed(3);
+      if (powerTimer === 0) {
+        ghosts.forEach(g => g.scared = false);
+        Sound.setSirenSpeed(1.5);
+      }
+    }
+
+    // призраки
+    ghosts.forEach(g => {
+      if (g.eaten) return;
+      if (g.releaseDelay > 0) { g.releaseDelay--; return; }
+
+      const onG = Math.abs(g.x - Math.round(g.x)) < 0.05 &&
+                  Math.abs(g.y - Math.round(g.y)) < 0.05;
+
+      if (onG) {
+        g.x = Math.round(g.x);
+        g.y = Math.round(g.y);
+
+        const target = g.scared
+          ? { x: COLS - 1 - pacman.x, y: ROWS - 1 - pacman.y }
+          : { x: pacman.x, y: pacman.y };
+
+        const dirs = [
+          {dx: 1, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: -1}
+        ];
+
+        const possible = dirs.filter(d => {
+          if (d.dx === -g.dx && d.dy === -g.dy && (g.dx !== 0 || g.dy !== 0)) return false;
+          if (isWall(g.x + d.dx, g.y + d.dy)) return false;
+          return true;
+        });
+
+        if (possible.length > 0) {
+          let best = possible[0];
+          let bestD = Infinity;
+          possible.forEach(d => {
+            const dist = Math.abs(g.x + d.dx - target.x) + Math.abs(g.y + d.dy - target.y);
+            if (dist < bestD) { bestD = dist; best = d; }
+          });
+          g.dx = best.dx;
+          g.dy = best.dy;
+        } else {
+          g.dx = 0; g.dy = 0;
+        }
+      }
+
+      const gspeed = g.scared ? 0.075 : 0.095;
+      g.x += g.dx * gspeed;
+      g.y += g.dy * gspeed;
+      g.x = wrapX(g.x);
+
+      // коллизия с Пакманом
+      const dx = Math.abs(g.x - pacman.x);
+      const dy = Math.abs(g.y - pacman.y);
+      if (dx < 0.8 && dy < 0.8) {
+        if (g.scared) {
+          g.eaten = true;
+          g.scared = false;
+          score += 200;
+          scoreEl.textContent = score;
+          Sound.eatGhost();
+          setTimeout(() => {
+            g.x = g.home.x;
+            g.y = g.home.y;
+            g.dx = 0; g.dy = 0;
+            g.eaten = false;
+            g.releaseDelay = 20;
+          }, 1000);
+        } else if (!g.eaten) {
+          loseLife();
+        }
+      }
+    });
+  }
+
+  function loseLife() {
+    lives--;
+    livesEl.textContent = '♥'.repeat(Math.max(0, lives)) || '—';
+    Sound.death();
+    Sound.stopSiren();
+    running = false;
+    cancelAnimationFrame(rafId);
+
+    if (lives <= 0) {
+      setTimeout(gameOver, 800);
+      return;
+    }
+
+    setTimeout(() => {
+      resetEntities();
+      running = true;
+      Sound.startSiren();
+      loop();
+    }, 1000);
+  }
+
+  function nextLevel() {
+    level++;
+    levelEl.textContent = level;
+    Sound.stopSiren();
+    Sound.levelUp();
+    running = false;
+    cancelAnimationFrame(rafId);
+
+    setTimeout(() => {
+      parseMap();
+      resetEntities();
+      pacman.speed = Math.min(0.13 + level * 0.008, 0.18);
+      running = true;
+      Sound.startSiren();
+      loop();
+    }, 1500);
+  }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    Sound.stopSiren();
+    Sound.gameOver();
+
+    showGameOverScreen();
+  }
+
+  function showGameOverScreen() {
+    const defaultName = localStorage.getItem('rivePacmanLast') || '';
+    overlay.innerHTML = `
+      <h2 style="color:#ff4444;text-shadow:0 0 20px #ff4444">ИГРА ОКОНЧЕНА</h2>
+      <p style="color:#fff;font-size:12px">СЧЁТ: <b style="color:#ff0">${score}</b> · УРОВЕНЬ ${level}</p>
+      <input class="name-input" id="nameInput" maxlength="10" placeholder="ТВОЁ ИМЯ" value="${defaultName}">
+      <button id="saveScoreBtn">💾 СОХРАНИТЬ РЕКОРД</button>
+      <button id="skipSaveBtn" style="border-color:#666;color:#666;box-shadow:none;padding:6px 18px;font-size:10px">ПРОПУСТИТЬ</button>
+    `;
+    overlay.style.display = 'flex';
+
+    document.getElementById('saveScoreBtn').addEventListener('click', () => {
+      const name = (document.getElementById('nameInput').value || 'ИГРОК').trim();
+      localStorage.setItem('rivePacmanLast', name);
+      Leaderboard.add(name, score, level);
+      showLeaderboardScreen();
+    });
+
+    document.getElementById('skipSaveBtn').addEventListener('click', () => {
+      showLeaderboardScreen();
+    });
+  }
+
+  function showLeaderboardScreen(highlightIndex = -1) {
+    const list = Leaderboard.load();
+
+    let rows = '';
+    if (list.length === 0) {
+      rows = '<div class="empty-lb">ПОКА НЕТ РЕКОРДОВ</div>';
+    } else {
+      rows = list.map((e, i) => {
+        const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+        return `<div class="lb-row ${cls}">
+          <span class="lb-rank">${i + 1}.</span>
+          <span class="lb-name">${escapeHtml(e.name)}</span>
+          <span class="lb-score">${e.score}</span>
+        </div>`;
+      }).join('');
+    }
+
+    overlay.innerHTML = `
+      <h2>🏆 ЛИДЕРЫ</h2>
+      <div class="leaderboard">
+        <div class="lb-title">— ТОП ${Leaderboard.MAX} —</div>
+        <div class="lb-list">${rows}</div>
+      </div>
+      <button id="restartBtn">↻ ИГРАТЬ ЗАНОВО</button>
+      <button id="closeLbBtn" style="border-color:#666;color:#666;box-shadow:none;padding:6px 18px;font-size:10px">ЗАКРЫТЬ</button>
+    `;
+
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    document.getElementById('closeLbBtn').addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function loop() {
+    if (!running) return;
+    update();
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startGame() {
+    Sound.init();
+    overlay.style.display = 'none';
+
+    score = 0; lives = 3; level = 1;
+    scoreEl.textContent = '0';
+    livesEl.textContent = '♥♥♥';
+    levelEl.textContent = '1';
+
+    parseMap();
+    resetEntities();
+    pacman.speed = 0.13;
+
+    Sound.start();
+    setTimeout(() => {
+      running = true;
+      Sound.startSiren();
+      loop();
+    }, 700);
+  }
+
+  // ══════════════ УПРАВЛЕНИЕ ══════════════
+  function setDir(dx, dy) {
+    if (!running) return;
+    pacman.nextDx = dx;
+    pacman.nextDy = dy;
+    // если стоим — сразу двинемся
+    if (pacman.dx === 0 && pacman.dy === 0) {
+      if (!isWall(Math.round(pacman.x) + dx, Math.round(pacman.y) + dy)) {
+        pacman.dx = dx;
+        pacman.dy = dy;
+        pacman.nextDx = 0;
+        pacman.nextDy = 0;
+      }
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup'    || k === 'w' || k === 'ц') { setDir(0, -1); e.preventDefault(); }
+    if (k === 'arrowdown'  || k === 's' || k === 'ы') { setDir(0, 1);  e.preventDefault(); }
+    if (k === 'arrowleft'  || k === 'a' || k === 'ф') { setDir(-1, 0); e.preventDefault(); }
+    if (k === 'arrowright' || k === 'd' || k === 'в') { setDir(1, 0);  e.preventDefault(); }
+  });
+
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const d = btn.dataset.dir;
+      if (d === 'up')    setDir(0, -1);
+      if (d === 'down')  setDir(0, 1);
+      if (d === 'left')  setDir(-1, 0);
+      if (d === 'right') setDir(1, 0);
+    });
+  });
+
+  // свайпы
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => {
+    Sound.init();
+    touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+  }, {passive: true});
+
+  canvas.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+    else setDir(0, dy > 0 ? 1 : -1);
+    touchStart = null;
+  }, {passive: true});
+
+  // звук
+  soundBtn.addEventListener('click', () => {
+    Sound.muted = !Sound.muted;
+    if (Sound.muted) {
+      soundBtn.classList.add('muted');
+      soundBtn.textContent = '🔇';
+      Sound.stopSiren();
+    } else {
+      soundBtn.classList.remove('muted');
+      soundBtn.textContent = '🔊';
+      Sound.init();
+      if (running) Sound.startSiren();
+    }
+  });
+
+  // лидерборд
+  lbBtn.addEventListener('click', () => {
+    if (running) return; // не открываем во время игры
+    showLeaderboardScreen();
+  });
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+
+  // инициализация
+  parseMap();
+  resetEntities();
+  draw();
+})();
+</script>
+</body>
+</html>
