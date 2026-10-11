@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RIVE GAMES — Игровой портал</title>
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+
+    :root {
+        --bg-dark: #0a0810;
+        --bg-panel: #140c1e;
+        --violet: #a855f7;
+        --violet-light: #c084fc;
+        --violet-dark: #6b21a8;
+        --gold: #f5d76e;
+        --gold-dark: #b8860b;
+        --text: #f5f5f5;
+        --text-dim: #8b7aa8;
+    }
+
+    html, body {
+        background: var(--bg-dark);
+        color: var(--text);
+        font-family: 'Courier New', monospace;
+        min-height: 100vh;
+        overflow-x: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    /* ═══ ФОН ═══ */
+    .bg-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(circle at 20% 10%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 80% 90%, rgba(245, 215, 110, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(107, 33, 168, 0.1) 0%, transparent 70%);
+    }
+
+    /* Сканлайны */
+    .bg-layer::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+            0deg,
+            rgba(168, 85, 247, 0.02) 0px,
+            rgba(168, 85, 247, 0.02) 1px,
+            transparent 1px,
+            transparent 3px
+        );
+    }
+
+    /* ═══ ИНТРО ═══ */
+    #intro {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 100;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        transition: opacity 0.8s;
+    }
+    #intro.hidden { opacity: 0; pointer-events: none; }
+
+    .intro-logo {
+        max-width: 70%;
+        max-height: 40vh;
+        opacity: 0;
+        transform: scale(0.5);
+        animation: logoAppear 2s ease-out 0.3s forwards;
+        filter: drop-shadow(0 0 30px var(--violet)) drop-shadow(0 0 60px var(--gold));
+    }
+    @keyframes logoAppear {
+        0% { opacity: 0; transform: scale(0.5); }
+        50% { opacity: 1; transform: scale(1.1); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    .intro-title {
+        margin-top: 30px;
+        font-size: 32px;
+        letter-spacing: 8px;
+        font-weight: 900;
+        background: linear-gradient(90deg, var(--violet), var(--gold), var(--violet));
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        opacity: 0;
+        animation: titleAppear 2s ease-out 1.2s forwards;
+    }
+    @keyframes titleAppear {
+        0% { opacity: 0; letter-spacing: 30px; }
+        100% { opacity: 1; letter-spacing: 8px; }
+    }
+
+    .intro-sub {
+        margin-top: 16px;
+        color: var(--text-dim);
+        font-size: 11px;
+        letter-spacing: 4px;
+        opacity: 0;
+        animation: fadeIn 1s ease-out 2.2s forwards;
+    }
+
+    .intro-start {
+        margin-top: 40px;
+        padding: 14px 40px;
+        background: transparent;
+        border: 2px solid var(--violet);
+        color: var(--violet);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        cursor: pointer;
+        border-radius: 8px;
+        opacity: 0;
+        transition: all 0.3s;
+        animation: fadeIn 1s ease-out 2.8s forwards;
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .intro-start:hover {
+        background: var(--violet);
+        color: #000;
+        box-shadow: 0 0 40px var(--violet), 0 0 60px var(--gold);
+        transform: scale(1.05);
+    }
+    .intro-start.visible { opacity: 1; }
+
+    /* ═══ ГЛАВНОЕ МЕНЮ ═══ */
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 16px 60px;
+        position: relative;
+        z-index: 2;
+        opacity: 0;
+        transition: opacity 0.8s;
+    }
+    .container.visible { opacity: 1; }
+
+    /* ШАПКА */
+    .header {
+        text-align: center;
+        padding: 30px 0 40px;
+    }
+    .header-logo {
+        max-width: 180px;
+        filter: drop-shadow(0 0 20px var(--violet));
+        margin-bottom: 12px;
+    }
+    .logo-text {
+        font-size: 38px;
+        font-weight: 900;
+        letter-spacing: 6px;
+        background: linear-gradient(90deg, var(--violet-light), var(--gold), var(--violet-light));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 40px rgba(168, 85, 247, 0.6);
+    }
+    .subtitle {
+        color: var(--violet-light);
+        font-size: 11px;
+        letter-spacing: 5px;
+        margin-top: 10px;
+        opacity: 0.8;
+    }
+    .subtitle-line {
+        display: inline-block;
+        width: 60px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--violet), transparent);
+        vertical-align: middle;
+        margin: 0 12px;
+    }
+
+    /* ФИЛЬТРЫ */
+    .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 30px;
+    }
+    .filter-btn {
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        color: var(--violet-light);
+        padding: 8px 18px;
+        font-family: inherit;
+        font-size: 10px;
+        letter-spacing: 2px;
+        cursor: pointer;
+        border-radius: 20px;
+        transition: all 0.2s;
+    }
+    .filter-btn:hover {
+        background: rgba(168, 85, 247, 0.2);
+        box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+    }
+    .filter-btn.active {
+        background: linear-gradient(90deg, var(--violet), var(--gold));
+        color: #000;
+        border-color: transparent;
+        font-weight: 700;
+    }
+
+    /* СЕТКА ИГР */
+    .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+    }
+
+    .game-card {
+        background: linear-gradient(145deg, rgba(20, 12, 30, 0.9), rgba(10, 8, 16, 0.9));
+        border: 2px solid rgba(168, 85, 247, 0.3);
+        border-radius: 16px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .game-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(245, 215, 110, 0.1), transparent);
+        transition: left 0.5s;
+    }
+    .game-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--gold);
+        box-shadow:
+            0 10px 40px rgba(168, 85, 247, 0.4),
+            0 0 30px rgba(245, 215, 110, 0.2) inset;
+    }
+    .game-card:hover::before { left: 100%; }
+
+    .game-icon {
+        font-size: 56px;
+        text-align: center;
+        margin-bottom: 12px;
+        filter: drop-shadow(0 0 15px currentColor);
+        transition: transform 0.3s;
+    }
+    .game-card:hover .game-icon {
+        transform: scale(1.15) rotate(-5deg);
+    }
+
+    .game-title {
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-align: center;
+        margin-bottom: 8px;
+        color: #fff;
+    }
+    .game-desc {
+        font-size: 11px;
+        color: var(--text-dim);
+        text-align: center;
+        line-height: 1.6;
+        margin-bottom: 14px;
+        min-height: 34px;
+    }
+    .game-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 12px;
+        border-top: 1px solid rgba(168, 85, 247, 0.15);
+        font-size: 10px;
+        letter-spacing: 1px;
+    }
+    .game-tag {
+        background: rgba(168, 85, 247, 0.15);
+        color: var(--violet-light);
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        font-weight: 700;
+    }
+    .game-tag.new { background: rgba(52, 199, 89, 0.15); color: #34c759; }
+    .game-tag.hot { background: rgba(255, 71, 87, 0.15); color: #ff4757; }
+    .game-tag.retro { background: rgba(245, 215, 110, 0.15); color: var(--gold); }
+    .game-plays {
+        color: var(--text-dim);
+        font-size: 10px;
+    }
+
+    /* Цвета иконок */
+    .game-card[data-color="#f5d76e"] .game-icon { color: #f5d76e; }
+    .game-card[data-color="#ff4757"] .game-icon { color: #ff4757; }
+    .game-card[data-color="#34c759"] .game-icon { color: #34c759; }
+    .game-card[data-color="#00d4ff"] .game-icon { color: #00d4ff; }
+    .game-card[data-color="#a855f7"] .game-icon { color: #a855f7; }
+    .game-card[data-color="#ec4899"] .game-icon { color: #ec4899; }
+    .game-card[data-color="#6366f1"] .game-icon { color: #6366f1; }
+
+    /* ПОДВАЛ */
+    .footer {
+        text-align: center;
+        margin-top: 60px;
+        padding-top: 30px;
+        border-top: 1px solid rgba(168, 85, 247, 0.15);
+        color: var(--text-dim);
+        font-size: 10px;
+        letter-spacing: 2px;
+        line-height: 2;
+    }
+    .footer a { color: var(--violet-light); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ═══ ИГРОВОЙ ЭКРАН ═══ */
+    #gameScreen {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 50;
+        display: none;
+        flex-direction: column;
+    }
+    #gameScreen.visible { display: flex; }
+
+    .game-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 16px;
+        background: linear-gradient(180deg, rgba(20, 12, 30, 0.95), rgba(10, 8, 16, 0.9));
+        border-bottom: 2px solid var(--violet);
+        box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+        z-index: 2;
+    }
+    .back-btn {
+        background: rgba(168, 85, 247, 0.15);
+        border: 1px solid var(--violet);
+        color: var(--violet-light);
+        padding: 8px 16px;
+        font-family: inherit;
+        font-size: 11px;
+        letter-spacing: 2px;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    .back-btn:hover {
+        background: var(--violet);
+        color: #000;
+        box-shadow: 0 0 20px var(--violet);
+    }
+    .game-name {
+        color: var(--gold);
+        font-size: 13px;
+        letter-spacing: 3px;
+        font-weight: 700;
+        text-shadow: 0 0 10px var(--gold);
+    }
+    .game-status {
+        color: var(--text-dim);
+        font-size: 10px;
+        letter-spacing: 2px;
+    }
+
+    #gameFrame {
+        flex: 1;
+        width: 100%;
+        border: none;
+        background: #000;
+    }
+
+    /* МУЗЫКА */
+    .music-toggle {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        width: 48px;
+        height: 48px;
+        background: rgba(168, 85, 247, 0.2);
+        border: 2px solid var(--violet);
+        color: var(--violet-light);
+        font-size: 20px;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 40;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s;
+        box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+    }
+    .music-toggle:hover {
+        background: var(--violet);
+        color: #000;
+        box-shadow: 0 0 25px var(--violet);
+    }
+    .music-toggle.playing {
+        border-color: var(--gold);
+        color: var(--gold);
+        box-shadow: 0 0 25px var(--gold);
+    }
+
+    /* ═══ МОБИЛЬНАЯ ═══ */
+    @media (max-width: 600px) {
+        .logo-text { font-size: 24px; letter-spacing: 4px; }
+        .subtitle { font-size: 9px; letter-spacing: 2px; }
+        .games-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+        .game-card { padding: 14px; }
+        .game-icon { font-size: 40px; margin-bottom: 8px; }
+        .game-title { font-size: 12px; letter-spacing: 1px; }
+        .game-desc { font-size: 9px; min-height: 26px; }
+        .game-tag { font-size: 8px; padding: 2px 8px; }
+        .game-plays { display: none; }
+        .intro-title { font-size: 22px; letter-spacing: 4px; }
+        .intro-logo { max-width: 80%; }
+        .intro-start { padding: 12px 28px; font-size: 12px; }
+        .music-toggle { width: 42px; height: 42px; bottom: 12px; right: 12px; font-size: 18px; }
+        .game-topbar { padding: 8px 12px; }
+        .back-btn { padding: 6px 12px; font-size: 10px; }
+        .game-name { font-size: 11px; letter-spacing: 2px; }
+    }
+    @media (max-width: 380px) {
+        .games-grid { grid-template-columns: 1fr; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ФОН -->
+<div class="bg-layer"></div>
+
+<!-- АУДИО -->
+<audio id="introAudio" loop preload="auto">
+    <source src="https://files.catbox.moe/ocldkx.mp3" type="audio/mpeg">
+</audio>
+
+<!-- ИНТРО -->
+<div id="intro">
+    <img class="intro-logo" src="https://i.postimg.cc/C5hZhftg/95fb2d2dc4e611f1aec1eaa78eba1e38-1.jpg" alt="RIVE">
+    <div class="intro-title">RIVE GAMES</div>
+    <div class="intro-sub">GAME PORTAL · 2026</div>
+    <button class="intro-start" id="introStart">▶ НАЧАТЬ</button>
+</div>
+
+<!-- ГЛАВНОЕ МЕНЮ -->
+<div class="container" id="mainMenu">
+    <div class="header">
+        <img class="header-logo" src="https://i.postimg.cc/C5hZhftg/95fb2d2dc4e611f1aec1eaa78eba1e38-1.jpg" alt="RIVE">
+        <div class="logo-text">RIVE GAMES</div>
+        <div class="subtitle">
+            <span class="subtitle-line"></span>
+            ВЫБЕРИ ИГРУ
+            <span class="subtitle-line"></span>
+        </div>
+    </div>
+
+    <!-- ФИЛЬТРЫ -->
+    <div class="filters">
+        <button class="filter-btn active" data-filter="all">ВСЕ</button>
+        <button class="filter-btn" data-filter="horror">👻 ХОРРОР</button>
+        <button class="filter-btn" data-filter="arcade">🔥 АРКАДЫ</button>
+        <button class="filter-btn" data-filter="puzzle">🧩 ГОЛОВОЛОМКИ</button>
+        <button class="filter-btn" data-filter="fighting">⚔️ ДРАКИ</button>
+        <button class="filter-btn" data-filter="classic">🎲 КЛАССИКА</button>
+    </div>
+
+    <!-- СЕТКА ИГР -->
+    <div class="games-grid" id="gamesGrid">
+
+        <!-- Backrooms -->
+        <div class="game-card" data-file="Backrooms.html" data-category="horror" data-color="#f5d76e">
+            <div class="game-icon">🌀</div>
+            <div class="game-title">BACKROOMS</div>
+            <div class="game-desc">Уровень 0. Найди выход, не дай сущностям убить тебя.</div>
+            <div class="game-meta">
+                <span class="game-tag hot">🔥 ХИТ</span>
+                <span class="game-plays">3D · ХОРРОР</span>
+            </div>
+        </div>
+
+        <!-- Block Blast -->
+        <div class="game-card" data-file="BBRM.html" data-category="puzzle" data-color="#6366f1">
+            <div class="game-icon">🧩</div>
+            <div class="game-title">BLOCK BLAST</div>
+            <div class="game-desc">Ставь фигуры на поле 8×8, собирай линии. Комбо!</div>
+            <div class="game-meta">
+                <span class="game-tag new">✨ НОВОЕ</span>
+                <span class="game-plays">ГОЛОВОЛОМКА</span>
+            </div>
+        </div>
+
+        <!-- Stickman Duel -->
+        <div class="game-card" data-file="Stickman.html" data-category="fighting" data-color="#ff4757">
+            <div class="game-icon">⚔️</div>
+            <div class="game-title">STICKMAN DUEL</div>
+            <div class="game-desc">Дуэль на двоих. 8 видов оружия, кровь, отрубания.</div>
+            <div class="game-meta">
+                <span class="game-tag hot">🔥 ХИТ</span>
+                <span class="game-plays">2 ИГРОКА</span>
+            </div>
+        </div>
+
+        <!-- Змейка -->
+        <div class="game-card" data-file="Snake.html" data-category="arcade" data-color="#34c759">
+            <div class="game-icon">🐍</div>
+            <div class="game-title">ЗМЕЙКА</div>
+            <div class="game-desc">Собирай яблоки, расти, не врезайся в стены.</div>
+            <div class="game-meta">
+                <span class="game-tag retro">🎮 РЕТРО</span>
+                <span class="game-plays">АРКАДА</span>
+            </div>
+        </div>
+
+        <!-- Пинг-понг -->
+        <div class="game-card" data-file="Ping_pong.html" data-category="classic" data-color="#00d4ff">
+            <div class="game-icon">🏓</div>
+            <div class="game-title">ПИНГ-ПОНГ</div>
+            <div class="game-desc">Классика. Неоновый стол, 3 сложности бота.</div>
+            <div class="game-meta">
+                <span class="game-tag retro">🎮 РЕТРО</span>
+                <span class="game-plays">2 ИГРОКА</span>
+            </div>
+        </div>
+
+        <!-- Пакман -->
+        <div class="game-card" data-file="Pacman.html" data-category="arcade" data-color="#f5d76e">
+            <div class="game-icon">👻</div>
+            <div class="game-title">ПАКМАН</div>
+            <div class="game-desc">Классика жанра. Собирай точки, убегай от призраков.</div>
+            <div class="game-meta">
+                <span class="game-tag retro">🎮 РЕТРО</span>
+                <span class="game-plays">АРКАДА</span>
+            </div>
+        </div>
+
+        <!-- Сапёр -->
+        <div class="game-card" data-file="Grid.html" data-category="puzzle" data-color="#a855f7">
+            <div class="game-icon">💣</div>
+            <div class="game-title">САПЁР</div>
+            <div class="game-desc">Открывай клетки, не попади на мину. Классика Windows.</div>
+            <div class="game-meta">
+                <span class="game-tag retro">🎮 РЕТРО</span>
+                <span class="game-plays">ГОЛОВОЛОМКА</span>
+            </div>
+        </div>
+
+        <!-- Арканоид -->
+        <div class="game-card" data-file="Arkanoid.html" data-category="arcade" data-color="#00d4ff">
+            <div class="game-icon">🎯</div>
+            <div class="game-title">АРКАНОИД</div>
+            <div class="game-desc">Разбивай блоки, лови бонусы, не урони мяч.</div>
+            <div class="game-meta">
+                <span class="game-tag">АРКАДА</span>
+                <span class="game-plays">1 ИГРОК</span>
+            </div>
+        </div>
+
+        <!-- Динозаврик -->
+        <div class="game-card" data-file="Dinosaur.html" data-category="arcade" data-color="#34c759">
+            <div class="game-icon">🦖</div>
+            <div class="game-title">ДИНОЗАВРИК</div>
+            <div class="game-desc">Прыгай через кактусы. Классика Chrome без интернета.</div>
+            <div class="game-meta">
+                <span class="game-tag retro">🎮 РЕТРО</span>
+                <span class="game-plays">АРКАДА</span>
+            </div>
+        </div>
+
+        <!-- Шахматы -->
+        <div class="game-card" data-file="Chess.html" data-category="classic" data-color="#a855f7">
+            <div class="game-icon">♟️</div>
+            <div class="game-title">ШАХМАТЫ</div>
+            <div class="game-desc">Играй на двоих или против бота. Три уровня сложности.</div>
+            <div class="game-meta">
+                <span class="game-tag">КЛАССИКА</span>
+                <span class="game-plays">2 ИГРОКА</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ПОДВАЛ -->
+    <div class="footer">
+        <div>RIVE GAMES © 2026 · <a href="https://forum-rivemobile.sampproject.ru">RIVE MOBILE FORUM</a></div>
+        <div>РАЗРАБОТЧИКИ: 𝐴𝑙𝑏𝑒𝑟𝑡𝑘𝑎 𝐾𝑎𝑙𝑎ш𝑛𝑖𝑘𝑜𝑣 🐢 · 𝐷𝑒𝑒𝑝𝑆𝑒𝑒𝑘 🐦‍⬛</div>
+    </div>
+</div>
+
+<!-- ИГРОВОЙ ЭКРАН -->
+<div id="gameScreen">
+    <div class="game-topbar">
+        <button class="back-btn" id="backBtn">← В МЕНЮ</button>
+        <div class="game-name" id="gameName">ИГРА</div>
+        <div class="game-status">RIVE MOBILE</div>
+    </div>
+    <iframe id="gameFrame" allow="autoplay; fullscreen; pointer-lock"></iframe>
+</div>
+
+<!-- КНОПКА МУЗЫКИ -->
+<button class="music-toggle" id="musicToggle" title="Музыка вкл/выкл">🔇</button>
+
+<script>
+(function() {
+    // ═══════════════════════════════════════════════════
+    //  ЭЛЕМЕНТЫ
+    // ═══════════════════════════════════════════════════
+    const intro = document.getElementById('intro');
+    const introStart = document.getElementById('introStart');
+    const mainMenu = document.getElementById('mainMenu');
+    const gameScreen = document.getElementById('gameScreen');
+    const gameFrame = document.getElementById('gameFrame');
+    const gameName = document.getElementById('gameName');
+    const backBtn = document.getElementById('backBtn');
+    const musicToggle = document.getElementById('musicToggle');
+    const audio = document.getElementById('introAudio');
+
+    // ═══════════════════════════════════════════════════
+    //  ИНТРО → МЕНЮ
+    // ═══════════════════════════════════════════════════
+    introStart.addEventListener('click', () => {
+        // Пытаемся запустить музыку
+        audio.volume = 0.4;
+        const playPromise = audio.play();
+        if (playPromise) {
+            playPromise.then(() => {
+                musicToggle.textContent = '🔊';
+                musicToggle.classList.add('playing');
+            }).catch(() => {
+                // Музыка не запустилась — не страшно
+                console.log('Музыка не запустилась');
+            });
+        }
+        // Скрываем интро
+        intro.classList.add('hidden');
+        setTimeout(() => {
+            intro.style.display = 'none';
+            mainMenu.classList.add('visible');
+        }, 800);
+    });
+
+    // ═══════════════════════════════════════════════════
+    //  ФИЛЬТРЫ
+    // ═══════════════════════════════════════════════════
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const gameCards = document.querySelectorAll('.game-card');
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const filter = btn.dataset.filter;
+            gameCards.forEach(card => {
+                const cat = card.dataset.category;
+                if (filter === 'all' || cat === filter) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // ═══════════════════════════════════════════════════
+    //  ЗАГРУЗКА ИГРЫ
+    // ═══════════════════════════════════════════════════
+    gameCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const file = card.dataset.file;
+            const title = card.querySelector('.game-title').textContent;
+
+            gameFrame.src = file;
+            gameName.textContent = title;
+            gameScreen.classList.add('visible');
+
+            // Пауза музыки
+            if (!audio.paused) {
+                audio.pause();
+            }
+        });
+    });
+
+    // ═══════════════════════════════════════════════════
+    //  НАЗАД В МЕНЮ
+    // ═══════════════════════════════════════════════════
+    backBtn.addEventListener('click', () => {
+        gameScreen.classList.remove('visible');
+        gameFrame.src = 'about:blank';
+
+        // Возобновляем музыку
+        if (audio.paused && musicToggle.classList.contains('playing')) {
+            audio.play().catch(() => {});
+        }
+    });
+
+    // ═══════════════════════════════════════════════════
+    //  ПЕРЕКЛЮЧАТЕЛЬ МУЗЫКИ
+    // ═══════════════════════════════════════════════════
+    musicToggle.addEventListener('click', () => {
+        if (audio.paused) {
+            audio.volume = 0.4;
+            audio.play().catch(() => {});
+            musicToggle.textContent = '🔊';
+            musicToggle.classList.add('playing');
+        } else {
+            audio.pause();
+            musicToggle.textContent = '🔇';
+            musicToggle.classList.remove('playing');
+        }
+    });
+
+    // ═══════════════════════════════════════════════════
+    //  АНИМАЦИЯ ПОЯВЛЕНИЯ КАРТОЧЕК
+    // ═══════════════════════════════════════════════════
+    gameCards.forEach((card, i) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.5s, transform 0.5s';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, i * 80 + 1000);
+    });
+})();
+</script>
+
+</body>
+</html>
