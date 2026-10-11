@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Arkanoid — RIVE MOBILE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: radial-gradient(circle at 50% 0%, #0a0a2e 0%, #000 80%);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+    color: #fff;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .arc-wrap {
+    background: linear-gradient(160deg, #0a0a2e, #000);
+    border: 2px solid #06b6d4;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow:
+      0 0 25px rgba(6, 182, 212, 0.5),
+      0 0 50px rgba(6, 182, 212, 0.2),
+      inset 0 0 40px rgba(6, 182, 212, 0.05);
+    max-width: 460px;
+    width: 100%;
+    position: relative;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+  .logo {
+    background: linear-gradient(90deg, #06b6d4, #a855f7, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .top-btns { display: flex; gap: 6px; }
+  .mini-btn {
+    background: rgba(6, 182, 212, 0.15);
+    border: 1px solid #06b6d4;
+    color: #67e8f9;
+    padding: 5px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .mini-btn:hover { background: #06b6d4; color: #000; }
+  .mini-btn.muted { color: #444; border-color: #2a2a3a; }
+
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+  }
+  .stat {
+    flex: 1;
+    text-align: center;
+    background: rgba(6, 182, 212, 0.08);
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    border-radius: 8px;
+    padding: 5px 3px;
+  }
+  .stat-label { font-size: 8px; color: #67e8f9; margin-bottom: 2px; letter-spacing: 1.5px; }
+  .stat-value { font-size: 14px; font-weight: 800; color: #fff; text-shadow: 0 0 8px rgba(6, 182, 212, 0.8); }
+  .stat-value.lives { color: #f87171; text-shadow: 0 0 8px #f87171; }
+
+  .canvas-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+
+  #game {
+    display: block;
+    background: #000;
+    border-radius: 10px;
+    border: 1px solid rgba(6, 182, 212, 0.35);
+    width: 100%;
+    height: auto;
+    touch-action: none;
+    box-shadow: inset 0 0 30px rgba(6, 182, 212, 0.15);
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.94);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 20;
+  }
+  .overlay h2 {
+    font-size: 24px;
+    background: linear-gradient(90deg, #06b6d4, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 4px;
+  }
+  .overlay p {
+    color: #67e8f9;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    line-height: 2;
+  }
+  .overlay button {
+    background: linear-gradient(90deg, #06b6d4, #a855f7);
+    color: #fff;
+    border: none;
+    padding: 12px 32px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    cursor: pointer;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+    transition: all 0.2s;
+  }
+  .overlay button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(6, 182, 212, 0.9); }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .cbtn {
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.4);
+    color: #06b6d4;
+    font-size: 16px;
+    padding: 10px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.1s;
+    letter-spacing: 2px;
+  }
+  .cbtn:active { background: #06b6d4; color: #000; box-shadow: 0 0 15px #06b6d4; }
+
+  .hint {
+    text-align: center;
+    color: #06b6d4;
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-top: 8px;
+    opacity: 0.5;
+  }
+
+  .leaderboard {
+    width: 100%;
+    max-width: 260px;
+  }
+  .lb-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+  }
+  .lb-row.top1 { color: #fbbf24; text-shadow: 0 0 6px #fbbf24; }
+  .lb-row.top2 { color: #c0c0c0; }
+  .lb-row.top3 { color: #cd7f32; }
+  .lb-rank { width: 22px; text-align: left; }
+  .lb-name { flex: 1; text-align: left; padding-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-score { color: #06b6d4; font-weight: bold; }
+
+  .name-input {
+    background: #000;
+    border: 2px solid #06b6d4;
+    color: #fff;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-align: center;
+    text-transform: uppercase;
+    width: 200px;
+    outline: none;
+    border-radius: 8px;
+  }
+  .name-input::placeholder { color: #555; }
+
+  .powerup-legend {
+    display: flex;
+    justify-content: space-around;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: #67e8f9;
+    margin-top: 6px;
+    padding: 4px;
+    background: rgba(6, 182, 212, 0.05);
+    border-radius: 6px;
+  }
+  .powerup-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  @media (max-width: 400px) {
+    .stat-value { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="arc-wrap">
+  <div class="header">
+    <div class="logo">◄ RIVE.ARKANOID ►</div>
+    <div class="top-btns">
+      <button class="mini-btn" id="soundBtn">🔊</button>
+      <button class="mini-btn" id="lbBtn">🏆</button>
+      <button class="mini-btn" id="pauseBtn">⏸</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">СЧЁТ</div>
+      <div class="stat-value" id="score">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">РЕКОРД</div>
+      <div class="stat-value" id="high">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">УРОВЕНЬ</div>
+      <div class="stat-value" id="level">1</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">ЖИЗНИ</div>
+      <div class="stat-value lives" id="lives">♥♥♥</div>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="game" width="440" height="560"></canvas>
+    <div class="overlay" id="overlay">
+      <h2>ARKANOID</h2>
+      <p>ДВИГАЙ МЫШЬЮ ИЛИ ПАЛЬЦЕМ<br>ЛОВИ БОНУСЫ<br>РАЗБИВАЙ ВСЕ БЛОКИ</p>
+      <div class="powerup-legend" style="margin:8px 0;flex-wrap:wrap;gap:8px">
+        <span><span class="legend-dot" style="background:#10b981"></span>ШИРЕ</span>
+        <span><span class="legend-dot" style="background:#a855f7"></span>МЯЧ×3</span>
+        <span><span class="legend-dot" style="background:#f59e0b"></span>ЛИПКАЯ</span>
+        <span><span class="legend-dot" style="background:#06b6d4"></span>ЖИЗНЬ</span>
+      </div>
+      <button id="startBtn">▶ ИГРАТЬ</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="cbtn" data-act="left">◄ ВЛЕВО</button>
+    <button class="cbtn" data-act="right">ВПРАВО ►</button>
+  </div>
+
+  <div class="hint">RIVE MOBILE © 2024</div>
+</div>
+
+<script>
+(function() {
+  // ══════════════ ЗВУК ══════════════
+  const Sound = {
+    ctx: null, muted: false,
+    init() {
+      if (!this.ctx) {
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch(e) { this.muted = true; }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    tone(freq, dur, type, vol, freqEnd) {
+      if (this.muted || !this.ctx) return;
+      try {
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(freq, t);
+        if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+        g.gain.setValueAtTime(vol || 0.05, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        o.connect(g).connect(this.ctx.destination);
+        o.start(t); o.stop(t + dur);
+      } catch(e) {}
+    },
+    paddle() { this.tone(320, 0.06, 'square', 0.06); },
+    wall()   { this.tone(240, 0.04, 'square', 0.05); },
+    brick()  { this.tone(660, 0.06, 'triangle', 0.08); },
+    hardBrick() { this.tone(440, 0.08, 'sawtooth', 0.08); },
+    powerup(){ [523, 659, 784].forEach((f,i) => setTimeout(() => this.tone(f, 0.1, 'triangle', 0.08), i*50)); },
+    loseLife() { this.tone(400, 0.5, 'square', 0.1, 100); },
+    levelUp() {
+      [523, 659, 784, 1047, 1319].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.12, 'square', 0.08), i * 70));
+    },
+    gameOver() {
+      [392, 349, 311, 262].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.3, 'triangle', 0.1), i * 200));
+    },
+    win() {
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
+        setTimeout(() => this.tone(f, 0.15, 'square', 0.09), i * 100));
+    }
+  };
+
+  // ══════════════ ЛИДЕРБОРД ══════════════
+  const Leaderboard = {
+    KEY: 'riveArkanoidLeaders',
+    MAX: 10,
+    load() {
+      try { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); }
+      catch(e) { return []; }
+    },
+    save(list) {
+      try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch(e) {}
+    },
+    add(name, score, level) {
+      const list = this.load();
+      list.push({
+        name: (name || 'ИГРОК').toUpperCase().slice(0, 10),
+        score, level, date: Date.now()
+      });
+      list.sort((a, b) => b.score - a.score);
+      this.save(list.slice(0, this.MAX));
+    },
+    getHigh() {
+      const l = this.load();
+      return l.length ? l[0].score : 0;
+    }
+  };
+
+  // ══════════════ КОНСТАНТЫ ══════════════
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const overlay = document.getElementById('overlay');
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('high');
+  const levelEl = document.getElementById('level');
+  const livesEl = document.getElementById('lives');
+  const soundBtn = document.getElementById('soundBtn');
+  const lbBtn = document.getElementById('lbBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  // Параметры
+  const PADDLE_W_BASE = 90;
+  const PADDLE_H = 12;
+  const BALL_R = 7;
+  const BRICK_ROWS = 6;
+  const BRICK_COLS = 10;
+  const BRICK_W = (W - 20) / BRICK_COLS;
+  const BRICK_H = 22;
+  const BRICK_TOP = 60;
+  const BRICK_LEFT = 10;
+
+  // Цвета для рядов (сверху вниз)
+  const ROW_COLORS = [
+    { main: '#ef4444', light: '#fca5a5', dark: '#7f1d1d' },
+    { main: '#f59e0b', light: '#fcd34d', dark: '#78350f' },
+    { main: '#10b981', light: '#6ee7b7', dark: '#064e3b' },
+    { main: '#06b6d4', light: '#67e8f9', dark: '#0e4c5c' },
+    { main: '#6366f1', light: '#a5b4fc', dark: '#312e81' },
+    { main: '#ec4899', light: '#f9a8d4', dark: '#831843' }
+  ];
+
+  // ══════════════ СОСТОЯНИЕ ══════════════
+  let paddle, balls, bricks, particles, powerups;
+  let score, highScore, lives, level;
+  let running, paused, gameWon;
+  let rafId;
+  let lastTime;
+  let stars = [];
+  let mouseX = W / 2;
+  let paddleWidth = PADDLE_W_BASE;
+  let stickyPaddle = false;
+  let paddleKeys = { left: false, right: false };
+  let shakeAmount = 0;
+
+  highScore = Leaderboard.getHigh();
+  highEl.textContent = highScore;
+
+  // ══════════════ ЗВЁЗДЫ ФОНА ══════════════
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 60; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.2 + 0.3,
+        a: Math.random() * 0.6 + 0.2,
+        speed: Math.random() * 0.3 + 0.1,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  // ══════════════ ИНИЦИАЛИЗАЦИЯ ══════════════
+  function initGame() {
+    score = 0;
+    lives = 3;
+    level = 1;
+    scoreEl.textContent = '0';
+    livesEl.textContent = '♥♥♥';
+    levelEl.textContent = '1';
+    initLevel();
+  }
+
+  function initLevel() {
+    paddle = {
+      x: W / 2,
+      y: H - 40,
+      w: paddleWidth,
+      h: PADDLE_H,
+      speed: 7,
+      targetX: W / 2
+    };
+
+    balls = [createBall()];
+    particles = [];
+    powerups = [];
+    stickyPaddle = false;
+    paddleWidth = PADDLE_W_BASE;
+    paddle.w = paddleWidth;
+
+    // Генерируем блоки
+    bricks = [];
+    for (let r = 0; r < BRICK_ROWS; r++) {
+      for (let c = 0; c < BRICK_COLS; c++) {
+        // верхние ряды — крепкие (2 удара), иногда неразрушимые
+        let hp = 1;
+        if (r === 0 && level >= 2) hp = 2;
+        if (r === 0 && level >= 4 && (c === 3 || c === 6)) hp = 3;
+
+        // Некоторые блоки могут быть неразрушимыми (только на высоких уровнях)
+        const isSolid = level >= 5 && r === 0 && (c === 0 || c === BRICK_COLS - 1);
+
+        bricks.push({
+          x: BRICK_LEFT + c * BRICK_W,
+          y: BRICK_TOP + r * BRICK_H,
+          w: BRICK_W,
+          h: BRICK_H,
+          hp: isSolid ? Infinity : hp,
+          maxHp: isSolid ? Infinity : hp,
+          color: ROW_COLORS[r % ROW_COLORS.length],
+          row: r,
+          alive: true,
+          solid: isSolid,
+          flash: 0
+        });
+      }
+    }
+  }
+
+  function createBall() {
+    return {
+      x: paddle.x,
+      y: paddle.y - BALL_R - 2,
+      vx: 3.5 * (Math.random() > 0.5 ? 1 : -1),
+      vy: -4,
+      r: BALL_R,
+      stuck: true  // прилип к платформе
+    };
+  }
+
+  // ══════════════ ОТРИСОВКА ══════════════
+  function drawBackground() {
+    // градиентный космос
+    const grad = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, H);
+    grad.addColorStop(0, '#0a0a2e');
+    grad.addColorStop(1, '#000');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // звёзды
+    const t = performance.now() / 1000;
+    stars.forEach(s => {
+      s.y += s.speed * 0.15;
+      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+      const alpha = s.a + Math.sin(t * 2 + s.phase) * 0.2;
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, alpha)})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  function drawBlockShape(x, y, w, h, color, glow, alpha) {
+    ctx.globalAlpha = alpha !== undefined ? alpha : 1;
+
+    // тень
+    ctx.fillStyle = color.dark;
+    roundRect(ctx, x + 1, y + 1, w - 2, h - 2, 4);
+    ctx.fill();
+
+    // основной
+    const grad = ctx.createLinearGradient(x, y, x, y + h);
+    grad.addColorStop(0, color.light);
+    grad.addColorStop(0.5, color.main);
+    grad.addColorStop(1, color.main);
+    ctx.fillStyle = grad;
+    roundRect(ctx, x + 1, y + 1, w - 2, h - 3, 4);
+    ctx.fill();
+
+    // блик
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    roundRect(ctx, x + 3, y + 2, w - 6, 3, 1.5);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    // тряска экрана
+    ctx.save();
+    if (shakeAmount > 0.1) {
+      ctx.translate(
+        (Math.random() - 0.5) * shakeAmount,
+        (Math.random() - 0.5) * shakeAmount
+      );
+      shakeAmount *= 0.85;
+    }
+
+    drawBackground();
+
+    // границы
+    ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, W - 2, H - 2);
+
+    // блоки
+    bricks.forEach(b => {
+      if (!b.alive) return;
+      let color = b.color;
+      let alpha = 1;
+
+      // Крепкие блоки — темнее / с полосками
+      if (b.hp === 2 || b.maxHp === 2) {
+        // чуть темнее
+        color = { main: b.color.main, light: b.color.main, dark: b.color.dark };
+      }
+      if (b.solid) {
+        color = { main: '#444', light: '#888', dark: '#111' };
+      }
+      if (b.flash > 0) {
+        alpha = 0.5 + Math.random() * 0.5;
+        b.flash -= 0.1;
+      }
+
+      drawBlockShape(b.x, b.y, b.w, b.h, color, null, alpha);
+
+      // индикатор крепкого блока
+      if (b.hp === 2 && !b.solid) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        roundRect(ctx, b.x + 3, b.y + 3, b.w - 6, b.h - 6, 3);
+        ctx.stroke();
+      }
+      if (b.solid) {
+        // крестик
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 4, b.y + 4);
+        ctx.lineTo(b.x + b.w - 4, b.y + b.h - 4);
+        ctx.moveTo(b.x + b.w - 4, b.y + 4);
+        ctx.lineTo(b.x + 4, b.y + b.h - 4);
+        ctx.stroke();
+      }
+    });
+
+    // бонусы
+    powerups.forEach(p => {
+      const grad = ctx.createLinearGradient(p.x, p.y, p.x + p.w, p.y + p.h);
+      grad.addColorStop(0, p.color.light);
+      grad.addColorStop(1, p.color.main);
+      ctx.fillStyle = grad;
+      ctx.shadowColor = p.color.main;
+      ctx.shadowBlur = 15;
+      roundRect(ctx, p.x, p.y, p.w, p.h, 6);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // символ
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.symbol, p.x + p.w / 2, p.y + p.h / 2 + 1);
+    });
+
+    // платформа
+    ctx.shadowColor = stickyPaddle ? '#f59e0b' : '#06b6d4';
+    ctx.shadowBlur = 20;
+    const paddleGrad = ctx.createLinearGradient(paddle.x - paddle.w/2, 0, paddle.x + paddle.w/2, 0);
+    paddleGrad.addColorStop(0, stickyPaddle ? '#f59e0b' : '#06b6d4');
+    paddleGrad.addColorStop(0.5, stickyPaddle ? '#fcd34d' : '#67e8f9');
+    paddleGrad.addColorStop(1, stickyPaddle ? '#f59e0b' : '#06b6d4');
+    ctx.fillStyle = paddleGrad;
+    roundRect(ctx, paddle.x - paddle.w / 2, paddle.y, paddle.w, paddle.h, 6);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // блик на платформе
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    roundRect(ctx, paddle.x - paddle.w / 2 + 4, paddle.y + 2, paddle.w - 8, 3, 1.5);
+    ctx.fill();
+
+    // мячи
+    balls.forEach(ball => {
+      // свечение
+      const ballGrad = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, ball.r * 2);
+      ballGrad.addColorStop(0, '#fff');
+      ballGrad.addColorStop(0.4, '#67e8f9');
+      ballGrad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+      ctx.fillStyle = ballGrad;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ядро
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // частицы
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    });
+
+    // пауза
+    if (paused && running) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = 'bold 36px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 20;
+      ctx.fillText('ПАУЗА', W/2, H/2);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ══════════════ ОБНОВЛЕНИЕ ══════════════
+  function update(dt) {
+    if (!running || paused) return;
+
+    // платформа — следует за мышью плавно
+    if (!paddleKeys.left && !paddleKeys.right) {
+      const dx = mouseX - paddle.x;
+      paddle.x += dx * 0.35;
+    } else {
+      if (paddleKeys.left) paddle.x -= paddle.speed;
+      if (paddleKeys.right) paddle.x += paddle.speed;
+    }
+    paddle.x = Math.max(paddle.w / 2, Math.min(W - paddle.w / 2, paddle.x));
+
+    // мячи
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const ball = balls[i];
+
+      // Прилип к платформе
+      if (ball.stuck) {
+        ball.x = paddle.x;
+        ball.y = paddle.y - ball.r - 2;
+        continue;
+      }
+
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      // стены
+      if (ball.x - ball.r < 0) {
+        ball.x = ball.r;
+        ball.vx = Math.abs(ball.vx);
+        Sound.wall();
+      }
+      if (ball.x + ball.r > W) {
+        ball.x = W - ball.r;
+        ball.vx = -Math.abs(ball.vx);
+        Sound.wall();
+      }
+      if (ball.y - ball.r < 0) {
+        ball.y = ball.r;
+        ball.vy = Math.abs(ball.vy);
+        Sound.wall();
+      }
+
+      // платформа
+      if (ball.vy > 0 &&
+          ball.y + ball.r >= paddle.y &&
+          ball.y - ball.r <= paddle.y + paddle.h &&
+          ball.x >= paddle.x - paddle.w / 2 - ball.r &&
+          ball.x <= paddle.x + paddle.w / 2 + ball.r) {
+
+        // отскок — угол зависит от точки касания
+        const hit = (ball.x - paddle.x) / (paddle.w / 2);
+        const angle = hit * Math.PI / 3; // макс 60°
+        const speed = Math.hypot(ball.vx, ball.vy);
+        ball.vx = Math.sin(angle) * speed;
+        ball.vy = -Math.abs(Math.cos(angle) * speed);
+        ball.y = paddle.y - ball.r;
+
+        if (stickyPaddle) {
+          ball.stuck = true;
+        }
+
+        Sound.paddle();
+      }
+
+      // упал вниз
+      if (ball.y - ball.r > H) {
+        balls.splice(i, 1);
+        continue;
+      }
+
+      // блоки
+      for (let b of bricks) {
+        if (!b.alive) continue;
+        if (ball.x + ball.r < b.x) continue;
+        if (ball.x - ball.r > b.x + b.w) continue;
+        if (ball.y + ball.r < b.y) continue;
+        if (ball.y - ball.r > b.y + b.h) continue;
+
+        // Определяем сторону столкновения
+        const overlapX = Math.min(ball.x + ball.r - b.x, b.x + b.w - (ball.x - ball.r));
+        const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
+
+        if (overlapX < overlapY) {
+          ball.vx = -ball.vx;
+          ball.x += ball.vx > 0 ? overlapX : -overlapX;
+        } else {
+          ball.vy = -ball.vy;
+          ball.y += ball.vy > 0 ? overlapY : -overlapY;
+        }
+
+        // урон
+        if (b.solid) {
+          Sound.hardBrick();
+          b.flash = 0.5;
+          break;
+        }
+
+        b.hp--;
+        b.flash = 0.3;
+
+        if (b.hp <= 0) {
+          b.alive = false;
+          spawnBrickParticles(b);
+          Sound.brick();
+          const points = (BRICK_ROWS - b.row) * 10;
+          score += points;
+          scoreEl.textContent = score;
+          if (score > highScore) {
+            highScore = score;
+            highEl.textContent = highScore;
+          }
+          maybeDropPowerup(b);
+        } else {
+          Sound.hardBrick();
+        }
+        break;
+      }
+    }
+
+    // таймер stick
+    if (stickyPaddle) {
+      stickyPaddleTime -= dt;
+      if (stickyPaddleTime <= 0) stickyPaddle = false;
+    }
+
+    // бонусы падают
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      const p = powerups[i];
+      p.y += p.vy;
+
+      // поймали платформой
+      if (p.y + p.h >= paddle.y &&
+          p.y < paddle.y + paddle.h &&
+          p.x + p.w >= paddle.x - paddle.w / 2 &&
+          p.x <= paddle.x + paddle.w / 2) {
+        applyPowerup(p.type);
+        powerups.splice(i, 1);
+        Sound.powerup();
+        continue;
+      }
+
+      if (p.y > H) {
+        powerups.splice(i, 1);
+      }
+    }
+
+    // частицы
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.15;
+      p.vx *= 0.98;
+      p.life -= 0.02;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    // все мячи потеряны — минус жизнь
+    if (balls.length === 0 && running) {
+      loseLife();
+    }
+
+    // победа — все блоки разбиты (не считая неразрушимых)
+    const remaining = bricks.filter(b => b.alive && !b.solid).length;
+    if (remaining === 0 && running) {
+      winLevel();
+    }
+  }
+
+  let stickyPaddleTime = 0;
+
+  function spawnBrickParticles(b) {
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: cx,
+        y: cy,
+        vx: (Math.random() - 0.5) * 6,
+        vy: (Math.random() - 0.5) * 6 - 1,
+        r: Math.random() * 3 + 1,
+        color: b.color.main,
+        life: 1
+      });
+    }
+    shakeAmount = Math.min(shakeAmount + 3, 10);
+  }
+
+  function maybeDropPowerup(b) {
+    if (Math.random() > 0.15) return;
+
+    const types = [
+      { type: 'expand', color: { main: '#10b981', light: '#6ee7b7' }, symbol: '↔' },
+      { type: 'multiball', color: { main: '#a855f7', light: '#d8b4fe' }, symbol: '●●●' },
+      { type: 'sticky', color: { main: '#f59e0b', light: '#fcd34d' }, symbol: '≡' },
+      { type: 'life', color: { main: '#06b6d4', light: '#67e8f9' }, symbol: '♥' }
+    ];
+    const t = types[Math.floor(Math.random() * types.length)];
+
+    powerups.push({
+      x: b.x + b.w / 2 - 14,
+      y: b.y + b.h / 2 - 10,
+      w: 28,
+      h: 20,
+      vy: 2,
+      type: t.type,
+      color: t.color,
+      symbol: t.symbol
+    });
+  }
+
+  function applyPowerup(type) {
+    if (type === 'expand') {
+      paddleWidth = Math.min(paddleWidth + 30, 180);
+      paddle.w = paddleWidth;
+    } else if (type === 'multiball') {
+      const base = balls[0];
+      if (base) {
+        for (let i = 0; i < 2; i++) {
+          balls.push({
+            x: base.x,
+            y: base.y,
+            vx: base.vx + (i === 0 ? 2 : -2),
+            vy: base.vy - 1,
+            r: base.r,
+            stuck: false
+          });
+        }
+      }
+    } else if (type === 'sticky') {
+      stickyPaddle = true;
+      stickyPaddleTime = 8000;
+    } else if (type === 'life') {
+      if (lives < 5) {
+        lives++;
+        livesEl.textContent = '♥'.repeat(lives);
+      }
+    }
+  }
+
+  // ══════════════ ЖИЗНИ / УРОВНИ ══════════════
+  function loseLife() {
+    lives--;
+    livesEl.textContent = lives > 0 ? '♥'.repeat(lives) : '—';
+    Sound.loseLife();
+    shakeAmount = 8;
+
+    if (lives <= 0) {
+      gameOver();
+      return;
+    }
+
+    // сброс мяча
+    paddleWidth = PADDLE_W_BASE;
+    paddle.w = paddleWidth;
+    stickyPaddle = false;
+    balls = [createBall()];
+    // убираем часть бонусов
+    powerups = [];
+  }
+
+  function winLevel() {
+    Sound.win();
+    level++;
+    levelEl.textContent = level;
+    Sound.levelUp();
+    // не сбрасываем счёт и жизни
+    setTimeout(() => {
+      initLevel();
+      balls = [createBall()];
+    }, 500);
+  }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    Sound.gameOver();
+
+    const defaultName = localStorage.getItem('riveArkanoidLast') || '';
+    overlay.innerHTML = `
+      <h2 style="background:linear-gradient(90deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ИГРА ОКОНЧЕНА</h2>
+      <p>СЧЁТ: <b style="color:#fff">${score}</b><br>УРОВЕНЬ: ${level}</p>
+      <input class="name-input" id="nameInput" maxlength="10" placeholder="ТВОЁ ИМЯ" value="${defaultName}">
+      <button id="saveBtn">💾 СОХРАНИТЬ</button>
+      <button id="skipBtn" style="background:transparent;color:#666;box-shadow:none;border:1px solid #333;padding:8px 20px;font-size:11px">ПРОПУСТИТЬ</button>
+    `;
+    overlay.style.display = 'flex';
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const name = (document.getElementById('nameInput').value || 'ИГРОК').trim();
+      localStorage.setItem('riveArkanoidLast', name);
+      Leaderboard.add(name, score, level);
+      showLeaderboard();
+    });
+    document.getElementById('skipBtn').addEventListener('click', showLeaderboard);
+  }
+
+  function showLeaderboard() {
+    const list = Leaderboard.load();
+    let rows = '';
+    if (list.length === 0) {
+      rows = '<p style="color:#666;padding:10px">ПОКА ПУСТО</p>';
+    } else {
+      rows = list.map((e, i) => {
+        const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+        return `<div class="lb-row ${cls}">
+          <span class="lb-rank">${i+1}.</span>
+          <span class="lb-name">${escapeHtml(e.name)}</span>
+          <span class="lb-score">${e.score}</span>
+        </div>`;
+      }).join('');
+    }
+
+    overlay.innerHTML = `
+      <h2 style="background:linear-gradient(90deg,#fbbf24,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent">🏆 ЛИДЕРЫ</h2>
+      <div class="leaderboard">${rows}</div>
+      <button id="restartBtn2">↻ ИГРАТЬ</button>
+      <button id="closeBtn" style="background:transparent;color:#666;box-shadow:none;border:1px solid #333;padding:8px 20px;font-size:11px">ЗАКРЫТЬ</button>
+    `;
+    document.getElementById('restartBtn2').addEventListener('click', startGame);
+    document.getElementById('closeBtn').addEventListener('click', () => { overlay.style.display = 'none'; });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  // ══════════════ ИГРОВОЙ ЦИКЛ ══════════════
+  function loop(time) {
+    if (!running) return;
+    const dt = Math.min(time - lastTime, 50);
+    lastTime = time;
+    update(dt);
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startGame() {
+    Sound.init();
+    overlay.style.display = 'none';
+    initStars();
+    initGame();
+    paused = false;
+    pauseBtn.textContent = '⏸';
+    running = true;
+    lastTime = performance.now();
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // ══════════════ УПРАВЛЕНИЕ ══════════════
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = (e.clientX - rect.left) * (W / rect.width);
+  });
+
+  canvas.addEventListener('touchstart', e => {
+    Sound.init();
+    const rect = canvas.getBoundingClientRect();
+    mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
+    // запуск мяча
+    balls.forEach(b => { if (b.stuck) b.stuck = false; });
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('mousedown', () => {
+    Sound.init();
+    balls.forEach(b => { if (b.stuck) b.stuck = false; });
+  });
+
+  document.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a' || k === 'ф') { paddleKeys.left = true; e.preventDefault(); }
+    if (k === 'arrowright' || k === 'd' || k === 'в') { paddleKeys.right = true; e.preventDefault(); }
+    if (k === ' ' || k === 'enter') {
+      balls.forEach(b => { if (b.stuck) b.stuck = false; });
+      e.preventDefault();
+    }
+    if (k === 'p' || k === 'з') { togglePause(); e.preventDefault(); }
+  });
+
+  document.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a' || k === 'ф') paddleKeys.left = false;
+    if (k === 'arrowright' || k === 'd' || k === 'в') paddleKeys.right = false;
+  });
+
+  // кнопки влево/вправо
+  document.querySelectorAll('.cbtn').forEach(btn => {
+    const act = btn.dataset.act;
+    const start = e => {
+      e.preventDefault();
+      if (act === 'left') paddleKeys.left = true;
+      if (act === 'right') paddleKeys.right = true;
+    };
+    const stop = () => {
+      paddleKeys.left = false;
+      paddleKeys.right = false;
+    };
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', stop);
+    btn.addEventListener('mouseleave', stop);
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', stop);
+    btn.addEventListener('touchcancel', stop);
+  });
+
+  function togglePause() {
+    if (!running) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? '▶' : '⏸';
+    if (!paused) {
+      lastTime = performance.now();
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(loop);
+    }
+  }
+
+  pauseBtn.addEventListener('click', togglePause);
+
+  soundBtn.addEventListener('click', () => {
+    Sound.muted = !Sound.muted;
+    soundBtn.classList.toggle('muted', Sound.muted);
+    soundBtn.textContent = Sound.muted ? '🔇' : '🔊';
+  });
+
+  lbBtn.addEventListener('click', () => {
+    if (running) return;
+    showLeaderboard();
+  });
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+
+  // ресайз canvas
+  function resizeCanvas() {
+    const wrap = canvas.parentElement;
+    const maxW = Math.min(wrap.clientWidth, 440);
+    canvas.style.width = maxW + 'px';
+    canvas.style.height = 'auto';
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // инициализация
+  initStars();
+  initGame();
+  draw();
+})();
+</script>
+</body>
+</html>
