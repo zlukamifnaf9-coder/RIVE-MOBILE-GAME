@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FNAF — Офис 3D v4 (Камеры)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; background:#000; overflow:hidden; font-family:'Courier New',monospace; }
+
+  #scene {
+    position:fixed; inset:0;
+    perspective: 900px;
+    perspective-origin: 50% 50%;
+    background: radial-gradient(ellipse at 50% 40%, #120a06 0%, #000 70%);
+    overflow:hidden;
+    touch-action: none;
+  }
+
+  #room {
+    position:absolute; inset:0;
+    transform-style: preserve-3d;
+    transition: transform 0.9s cubic-bezier(.22,.61,.36,1);
+  }
+
+  /* ===== СТЕНЫ ===== */
+  .wall {
+    position:absolute;
+    background: linear-gradient(180deg, #1a120c 0%, #0d0805 100%);
+    border: 1px solid #2a1a0f;
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.9);
+  }
+  .wall-back { width: 1200px; height: 700px; left: 50%; top: 50%; transform: translate(-50%, -50%) translateZ(-600px); }
+  .wall-left { width: 700px; height: 700px; left: 50%; top: 50%; transform: translate(-50%, -50%) rotateY(90deg) translateZ(-600px); background: linear-gradient(90deg, #0d0805 0%, #1a120c 100%); }
+  .wall-right { width: 700px; height: 700px; left: 50%; top: 50%; transform: translate(-50%, -50%) rotateY(-90deg) translateZ(-600px); background: linear-gradient(270deg, #0d0805 0%, #1a120c 100%); }
+  .ceiling { width: 1200px; height: 700px; left: 50%; top: 50%; transform: translate(-50%, -50%) rotateX(90deg) translateZ(-350px); background: linear-gradient(180deg, #050302, #0a0705); }
+  .floor { width: 1200px; height: 700px; left: 50%; top: 50%; transform: translate(-50%, -50%) rotateX(-90deg) translateZ(-350px); background: repeating-linear-gradient(90deg, #0a0705 0 60px, #0f0a07 60px 120px), linear-gradient(180deg, #050302, #0a0705); box-shadow: inset 0 0 200px rgba(0,0,0,1); }
+
+  .stain { position:absolute; border-radius:50%; background: radial-gradient(circle, rgba(30,5,5,.55), transparent 70%); filter: blur(2px); pointer-events:none; }
+  .stain.s1 { width:180px; height:120px; left:50%; top:50%; transform: translate(-50%,-50%) translateZ(-599px) translate(-300px,-120px); }
+  .stain.s2 { width:140px; height:90px; left:50%; top:50%; transform: translate(-50%,-50%) translateZ(-599px) translate(320px,80px); }
+  .stain.s3 { width:120px; height:160px; left:50%; top:50%; transform: translate(-50%,-50%) rotateY(90deg) translateZ(-599px) translate(120px,60px); }
+
+  /* ===== ДВЕРИ ===== */
+  .door-frame { position:absolute; width: 180px; height: 420px; top: 50%; transform-style: preserve-3d; background: #050302; border: 6px solid #2a1a0f; box-shadow: inset 0 0 60px #000; overflow: hidden; }
+  .door-frame.left { left: 50%; transform: translate(-50%,-50%) translateX(-420px) translateZ(-580px); }
+  .door-frame.right { left: 50%; transform: translate(-50%,-50%) translateX(420px) translateZ(-580px); }
+  .door { position:absolute; left:0; right:0; bottom:0; height: 100%; background: linear-gradient(180deg, #1f1610, #0e0906); border-top: 4px solid #3d2b1f; transition: transform 0.4s cubic-bezier(.4,1.4,.5,1), box-shadow 0.3s; transform: translateY(100%); cursor:pointer; box-shadow: inset 0 10px 30px #000; }
+  .door.closed { transform: translateY(0%); box-shadow: 0 -10px 40px rgba(0,0,0,0.9), inset 0 10px 30px #000; }
+  .door .handle { position:absolute; right:12px; top:50%; width:12px; height:50px; border-radius:6px; background:#555; box-shadow:0 0 8px #000; transform: translateY(-50%); transition: opacity 0.2s; }
+  .door.closed .handle { opacity: 0; }
+  .door .label { position:absolute; bottom:16px; left:0; right:0; text-align:center; color:#885533; font-size:12px; letter-spacing:2px; font-weight:bold; text-shadow: 0 0 5px #000; }
+  .door-frame .warning { position:absolute; top:10px; left:0; right:0; text-align:center; font-size:32px; opacity:0; transition:opacity .2s; text-shadow:0 0 20px #f00; z-index: 5; }
+  .door-frame .warning.show { opacity:1; animation: blink .5s infinite; }
+  @keyframes blink { 50% { opacity:.2; } }
+
+  /* ===== СТОЛ ===== */
+  .desk { position:absolute; width: 760px; height: 260px; left:50%; top:50%; transform: translate(-50%,-50%) translateY(230px) translateZ(-120px) rotateX(-18deg); background: linear-gradient(180deg, #2a1a0f 0%, #0d0805 70%); border: 4px solid #1a0f0a; border-radius: 8px; box-shadow: 0 40px 80px rgba(0,0,0,0.95), inset 0 0 80px #000; transform-style: preserve-3d; }
+  .desk::before { content:''; position:absolute; inset:0; background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(0,0,0,.35) 22px 24px); border-radius:4px; opacity:.5; }
+
+  /* Кнопки дверей */
+  .btn-panel { position:absolute; bottom: 30px; left:50%; transform: translateX(-50%) translateZ(50px); display:flex; gap:40px; }
+  .door-btn { width: 80px; height: 60px; background: linear-gradient(145deg, #2a1a0a, #120a05); border: 2px solid #ff4444; border-radius: 8px; color:#ff4444; font-size:12px; font-weight:bold; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; box-shadow: 0 0 15px rgba(255,0,0,0.2), inset 0 0 10px #000; transition: all .1s; line-height: 1.2; }
+  .door-btn:active { transform: scale(.92); background:#3a1a0a; }
+  .door-btn.closed { background: #1a3a1a; border-color: #44ff44; color: #44ff44; box-shadow: 0 0 15px rgba(0,255,0,0.2); }
+
+  /* Монитор (Кликабельный для камер) */
+  .monitor { position:absolute; left:50%; top:-90px; transform: translateX(-50%); width: 260px; height: 170px; background: #050505; border: 8px solid #1a1a1a; border-radius: 10px; box-shadow: 0 0 40px rgba(102,204,255,0.08), inset 0 0 40px #000; overflow:hidden; cursor:pointer; transition: all 0.2s; }
+  .monitor:active { transform: translateX(-50%) scale(0.95); }
+  .monitor:hover { box-shadow: 0 0 60px rgba(102,204,255,0.2), inset 0 0 40px #000; }
+  .monitor .screen { position:absolute; inset:6px; background: radial-gradient(circle at 50% 40%, #0b1a22, #020606 80%); border-radius:6px; font-size:9px; color:#3af; padding:8px; text-shadow:0 0 6px #0af; overflow:hidden; pointer-events:none; }
+  .monitor .screen::after { content:''; position:absolute; inset:0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.35) 0 2px, transparent 2px 4px); pointer-events:none; }
+  .monitor .scan { position:absolute; left:0; right:0; height:2px; background:#0ff2; animation: scan 3s linear infinite; }
+  @keyframes scan { from { top:0; } to { top:100%; } }
+  .monitor .hint-text { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10px; color: #66ccff; font-weight: bold; animation: blink 1s infinite; pointer-events:none; }
+
+  /* Вентилятор и кружка */
+  .fan { position:absolute; left:60px; top:-40px; width: 70px; height:70px; border-radius:50%; background: radial-gradient(#222, #0a0a0a 70%); border:3px solid #1a1a1a; box-shadow: 0 0 20px #000; display:flex; align-items:center; justify-content:center; }
+  .fan .blades { width:60px; height:60px; background: conic-gradient(#333 0 25%, #111 25% 50%, #333 50% 75%, #111 75% 100%); border-radius:50%; animation: spin 1.2s linear infinite; opacity:.85; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .mug { position:absolute; right:70px; top:-30px; width:34px; height:44px; background: linear-gradient(180deg,#3a2a1a,#1a0f08); border-radius: 4px 4px 10px 10px; border:2px solid #2a1a0f; box-shadow: 0 0 10px #000; }
+  .mug::after { content:''; position:absolute; right:-14px; top:10px; width:16px; height:20px; border:4px solid #2a1a0f; border-left:none; border-radius:0 10px 10px 0; }
+
+  /* ===== ИГРУШКИ ===== */
+  .toy-shelf { position:absolute; left:50%; top:50%; width: 340px; height: 120px; transform: translate(-50%,-50%) translateZ(-580px) translateY(60px) rotateX(6deg); background: linear-gradient(180deg, #1a100a 0%, #0a0604 100%); border: 4px solid #1a0f0a; border-radius: 6px; box-shadow: 0 20px 40px rgba(0,0,0,.9), inset 0 0 40px #000; display:flex; align-items:flex-end; justify-content:space-around; padding: 8px 12px; }
+  .toy { position: relative; width: 60px; height: 80px; transition: transform .4s ease, filter .4s ease; transform-origin: bottom center; }
+  .pixel-art { width: 6px; height: 6px; position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); box-shadow: -12px -60px 0 0 #7a4b2b, -12px -66px 0 0 #7a4b2b, 12px -60px 0 0 #7a4b2b, 12px -66px 0 0 #7a4b2b, -6px -54px 0 0 #7a4b2b, 0px -54px 0 0 #7a4b2b, 6px -54px 0 0 #7a4b2b, -12px -48px 0 0 #7a4b2b, -6px -48px 0 0 #7a4b2b, 0px -48px 0 0 #7a4b2b, 6px -48px 0 0 #7a4b2b, 12px -48px 0 0 #7a4b2b, -12px -42px 0 0 #7a4b2b, -6px -42px 0 0 #111, 0px -42px 0 0 #7a4b2b, 6px -42px 0 0 #111, 12px -42px 0 0 #7a4b2b, -12px -36px 0 0 #7a4b2b, -6px -36px 0 0 #7a4b2b, 0px -36px 0 0 #7a4b2b, 6px -36px 0 0 #7a4b2b, 12px -36px 0 0 #7a4b2b, -6px -30px 0 0 #7a4b2b, 0px -30px 0 0 #7a4b2b, 6px -30px 0 0 #7a4b2b, -6px -18px 0 0 #7a4b2b, 0px -18px 0 0 #7a4b2b, 6px -18px 0 0 #7a4b2b, -6px -12px 0 0 #7a4b2b, 0px -12px 0 0 #7a4b2b, 6px -12px 0 0 #7a4b2b, -6px -6px 0 0 #7a4b2b, 0px -6px 0 0 #7a4b2b, 6px -6px 0 0 #7a4b2b; }
+  .toy[data-name="bonnie"] .pixel-art { box-shadow: -12px -66px 0 0 #7a3b8e, -12px -72px 0 0 #7a3b8e, 12px -66px 0 0 #7a3b8e, 12px -72px 0 0 #7a3b8e, -6px -60px 0 0 #7a3b8e, 0px -60px 0 0 #7a3b8e, 6px -60px 0 0 #7a3b8e, -12px -54px 0 0 #7a3b8e, -6px -54px 0 0 #7a3b8e, 0px -54px 0 0 #7a3b8e, 6px -54px 0 0 #7a3b8e, 12px -54px 0 0 #7a3b8e, -12px -48px 0 0 #7a3b8e, -6px -48px 0 0 #e74c3c, 0px -48px 0 0 #7a3b8e, 6px -48px 0 0 #e74c3c, 12px -48px 0 0 #7a3b8e, -12px -42px 0 0 #7a3b8e, -6px -42px 0 0 #7a3b8e, 0px -42px 0 0 #7a3b8e, 6px -42px 0 0 #7a3b8e, 12px -42px 0 0 #7a3b8e, -6px -36px 0 0 #7a3b8e, 0px -36px 0 0 #7a3b8e, 6px -36px 0 0 #7a3b8e, -6px -24px 0 0 #7a3b8e, 0px -24px 0 0 #7a3b8e, 6px -24px 0 0 #7a3b8e, -6px -18px 0 0 #7a3b8e, 0px -18px 0 0 #7a3b8e, 6px -18px 0 0 #7a3b8e, -6px -12px 0 0 #7a3b8e, 0px -12px 0 0 #7a3b8e, 6px -12px 0 0 #7a3b8e; }
+  .toy[data-name="chica"] .pixel-art { box-shadow: -12px -60px 0 0 #d4ac0d, -12px -66px 0 0 #d4ac0d, 12px -60px 0 0 #d4ac0d, 12px -66px 0 0 #d4ac0d, -6px -54px 0 0 #d4ac0d, 0px -54px 0 0 #d4ac0d, 6px -54px 0 0 #d4ac0d, -12px -48px 0 0 #d4ac0d, -6px -48px 0 0 #d4ac0d, 0px -48px 0 0 #d4ac0d, 6px -48px 0 0 #d4ac0d, 12px -48px 0 0 #d4ac0d, -12px -42px 0 0 #d4ac0d, -6px -42px 0 0 #111, 0px -42px 0 0 #d4ac0d, 6px -42px 0 0 #111, 12px -42px 0 0 #d4ac0d, -12px -36px 0 0 #d4ac0d, -6px -36px 0 0 #e67e22, 0px -36px 0 0 #e67e22, 6px -36px 0 0 #e67e22, 12px -36px 0 0 #d4ac0d, -6px -30px 0 0 #d4ac0d, 0px -30px 0 0 #d4ac0d, 6px -30px 0 0 #d4ac0d, -6px -18px 0 0 #d4ac0d, 0px -18px 0 0 #d4ac0d, 6px -18px 0 0 #d4ac0d, -6px -12px 0 0 #d4ac0d, 0px -12px 0 0 #d4ac0d, 6px -12px 0 0 #d4ac0d, -6px -6px 0 0 #d4ac0d, 0px -6px 0 0 #d4ac0d, 6px -6px 0 0 #d4ac0d; }
+  .toy.staring { transform: scale(1.1) translateZ(20px); filter: drop-shadow(0 0 15px rgba(255,0,0,0.4)); }
+  .toy.staring::after { content: ''; position: absolute; left: 50%; top: 38%; width: 22px; height: 8px; transform: translate(-50%, -50%); background: radial-gradient(circle at 25% 50%, #000 0 3px, transparent 4px), radial-gradient(circle at 75% 50%, #000 0 3px, transparent 4px); border-radius: 2px; }
+
+  /* Постер, лампа */
+  .poster { position:absolute; left:50%; top:50%; width: 260px; height: 200px; transform: translate(-50%,-50%) translateZ(-599px) translateY(-140px); background: linear-gradient(160deg,#2a0f0f,#0f0404); border: 6px solid #3d2b1f; box-shadow: 0 0 40px rgba(255,0,0,0.08); text-align:center; color:#cc3333; padding-top:18px; font-size:14px; letter-spacing:2px; line-height:1.4; transition: filter .6s; }
+  .poster .emoji { font-size:52px; display:block; margin-top:18px; filter: drop-shadow(0 0 10px #f00); }
+  .poster.dark .emoji { filter: drop-shadow(0 0 14px #300) brightness(.5); }
+  .lamp { position:absolute; left:50%; top:50%; width: 120px; height: 30px; transform: translate(-50%,-50%) translateZ(-200px) translateY(-330px); background: linear-gradient(180deg,#2a1a0f,#120a05); border-radius: 8px 8px 40px 40px; box-shadow: 0 0 80px rgba(255,180,80,0.15), 0 0 200px rgba(255,120,40,0.06); }
+  .lamp::after { content:''; position:absolute; left:50%; bottom:-6px; width:60px; height:10px; transform:translateX(-50%); background:#ffb050; border-radius:50%; box-shadow: 0 0 40px #ffb050, 0 0 100px #ff7a20; animation: flicker 4s infinite; }
+  @keyframes flicker { 0%,100% { opacity:1; } 92% { opacity:1; } 93% { opacity:.2; } 94% { opacity:1; } 97% { opacity:.4; } 98% { opacity:1; } }
+  .lightpool { position:absolute; left:50%; top:50%; width: 600px; height: 300px; transform: translate(-50%,-50%) rotateX(-90deg) translateZ(-330px); background: radial-gradient(ellipse at center, rgba(255,180,80,0.10), transparent 70%); pointer-events:none; }
+
+  /* ===== HUD ===== */
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:20; font-family:'Courier New',monospace; }
+  #hud .top { position:absolute; top:12px; left:0; right:0; display:flex; justify-content:space-between; padding:0 20px; color:#66ccff; font-size:14px; letter-spacing:2px; text-shadow:0 0 10px rgba(102,204,255,.4); }
+  #hud .top .night { color:#ff8844; }
+  #hud .bottom { position:absolute; bottom:14px; left:0; right:0; display:flex; justify-content:space-between; padding:0 20px; color:#4caf50; font-size:12px; letter-spacing:1px; }
+  #hud .bottom .usage { color:#888; font-size:10px; }
+  #hud .bottom .usage b { color:#ffcc44; }
+  #hud .center-msg { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:#ff4444; font-size:16px; letter-spacing:3px; text-align:center; opacity:0; transition:opacity .3s; text-shadow:0 0 30px rgba(255,0,0,.5); }
+  #hud .center-msg.show { opacity:1; }
+
+  #hint { position:fixed; left:50%; bottom:44px; transform:translateX(-50%); color:#554433; font-size:10px; letter-spacing:1px; z-index:21; pointer-events:none; text-align:center; }
+
+  /* Тап-зоны */
+  .tap-zone { position:fixed; z-index:15; background: transparent; }
+  .tap-left   { left:0; top:15%; bottom:15%; width:22%; }
+  .tap-right  { right:0; top:15%; bottom:15%; width:22%; }
+  .tap-up     { left:22%; right:22%; top:0; height:15%; }
+  .tap-down   { left:22%; right:22%; bottom:0; height:15%; }
+  .tap-center { left:22%; right:22%; top:15%; bottom:15%; }
+
+  #musicBtn { position:fixed; top:12px; right:14px; z-index:30; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.05); border:1px solid #2a1a0f; color:#886644; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; pointer-events:auto; }
+  #musicBtn:active { transform:scale(.9); }
+
+  #scare { position:fixed; inset:0; background:#000; z-index:100; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .08s; font-size:120px; }
+  #scare.show { opacity:1; background:rgba(40,0,0,.95); }
+
+  /* ============================================================
+     НОВЫЙ ИНТЕРФЕЙС КАМЕР (3D ПЛАНШЕТ)
+     ============================================================ */
+  #cam-ui {
+    position: fixed; inset: 0; z-index: 40;
+    background: #000; display: none;
+    flex-direction: column;
+    font-family:'Courier New',monospace;
+    animation: fadeIn 0.3s;
+  }
+  #cam-ui.active { display: flex; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+  /* Верхняя панель камер */
+  #cam-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px 20px; background: #0a0a0a; border-bottom: 2px solid #1a0f0a;
+    color: #66ccff; font-size: 14px;
+  }
+  #cam-header .cam-title { color: #ff8844; font-weight: bold; }
+  #cam-header .cam-power { color: #4caf50; }
+
+  /* Сетка камер */
+  #cam-grid {
+    flex: 1; display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 4px; padding: 4px;
+    background: #050505;
+  }
+  .cam-btn {
+    background: #111; border: 2px solid #1a1a1a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; color: #666; font-size: 12px;
+    transition: all 0.2s; position: relative;
+  }
+  .cam-btn:active { background: #222; }
+  .cam-btn.active { border-color: #66ccff; background: #0a1a22; color: #66ccff; }
+  .cam-btn .cam-label { margin-top: 5px; }
+  .cam-btn .cam-status {
+    position: absolute; top: 5px; right: 5px;
+    font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: #000; color: #4caf50;
+  }
+  .cam-btn .cam-status.danger { color: #ff4444; animation: blink 0.8s infinite; }
+
+  /* Экран просмотра камеры */
+  #cam-screen {
+    height: 50vh; background: #020202;
+    border-bottom: 2px solid #1a0f0a;
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    color: #0af; font-size: 16px; text-shadow: 0 0 10px #0af;
+  }
+  #cam-screen::after {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.35) 0 2px, transparent 2px 4px);
+    pointer-events: none;
+  }
+  #cam-screen .scanline {
+    position: absolute; left: 0; right: 0; height: 3px;
+    background: rgba(0, 255, 255, 0.2); animation: scan 4s linear infinite;
+  }
+  #cam-screen .room-title {
+    position: absolute; top: 10px; left: 15px; font-size: 12px; color: #fff;
+    text-shadow: none;
+  }
+  #cam-screen .room-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at center, #111, #000);
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* Пиксельный аниматроник на камере */
+  .cam-animatronic {
+    font-size: 80px; opacity: 0; transition: opacity 0.3s;
+    filter: drop-shadow(0 0 20px rgba(255,50,0,0.5));
+    animation: pulse 2s infinite alternate;
+  }
+  .cam-animatronic.show { opacity: 1; }
+  @keyframes pulse { from{transform:scale(1);} to{transform:scale(1.05);} }
+
+  /* Кнопка закрытия */
+  #close-cam {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #1a0f0a; border: 2px solid #3d2b1f; color: #cc8844;
+    padding: 15px 40px; font-size: 16px; font-weight: bold;
+    font-family:'Courier New',monospace; cursor: pointer;
+    border-radius: 8px; z-index: 10;
+  }
+  #close-cam:active { transform: translateX(-50%) scale(0.95); }
+
+  @media (max-width:500px) {
+    #scene { perspective: 700px; }
+    .door-frame { width:130px; height:320px; }
+    .door-frame.left  { transform: translate(-50%,-50%) translateX(-300px) translateZ(-580px); }
+    .door-frame.right { transform: translate(-50%,-50%) translateX(300px)  translateZ(-580px); }
+    .desk { width:520px; height:200px; transform: translate(-50%,-50%) translateY(190px) translateZ(-120px) rotateX(-18deg); }
+    .monitor { width:190px; height:130px; top:-70px; }
+    .poster { width:190px; height:150px; font-size:11px; }
+    .poster .emoji { font-size:36px; }
+    .toy-shelf { width: 260px; height: 96px; transform: translate(-50%,-50%) translateZ(-575px) translateY(50px) rotateX(6deg); }
+    .toy { transform: scale(0.8); }
+    .btn-panel { bottom: 15px; gap: 20px; }
+    .door-btn { width: 60px; height: 50px; font-size: 10px; }
+    #cam-grid { grid-template-columns: 1fr 1fr; }
+    #cam-screen { height: 45vh; }
+  }
+</style>
+</head>
+<body>
+
+<div id="scene">
+  <div id="room">
+    <div class="wall wall-back"></div>
+    <div class="wall wall-left"></div>
+    <div class="wall wall-right"></div>
+    <div class="ceiling"></div>
+    <div class="floor"></div>
+
+    <div class="stain s1"></div>
+    <div class="stain s2"></div>
+    <div class="stain s3"></div>
+
+    <div class="poster" id="poster">
+      FREDDY FAZBEAR'S<br>PIZZA
+      <span class="emoji">🐻</span>
+    </div>
+
+    <div class="toy-shelf" id="toyShelf">
+      <div class="toy" data-name="freddy" id="toyFreddy"><div class="pixel-art"></div></div>
+      <div class="toy" data-name="bonnie" id="toyBonnie"><div class="pixel-art"></div></div>
+      <div class="toy" data-name="chica"  id="toyChica"><div class="pixel-art"></div></div>
+    </div>
+
+    <div class="lamp"></div>
+    <div class="lightpool"></div>
+
+    <div class="door-frame left" id="frameLeft">
+      <div class="warning" id="warnLeft">⚠️</div>
+      <div class="door" id="doorLeft" onclick="toggleDoor('left')">
+        <div class="handle"></div>
+        <div class="label">ЗАКРЫТО</div>
+      </div>
+    </div>
+    <div class="door-frame right" id="frameRight">
+      <div class="warning" id="warnRight">⚠️</div>
+      <div class="door" id="doorRight" onclick="toggleDoor('right')">
+        <div class="handle"></div>
+        <div class="label">ЗАКРЫТО</div>
+      </div>
+    </div>
+
+    <div class="desk">
+      <!-- Кликабельный монитор для входа в камеры -->
+      <div class="monitor" id="monitorCam" onclick="openCameras()">
+        <div class="screen">
+          CAM 01 — SHOW STAGE<br>
+          ● чисто<br><br>
+          POWER: <span id="screenPower">100%</span><br>
+          USAGE: <span id="screenUsage">0%</span>
+          <div class="scan"></div>
+          <div class="hint-text">ТАП ДЛЯ КАМЕР</div>
+        </div>
+      </div>
+      <div class="fan"><div class="blades"></div></div>
+      <div class="mug"></div>
+      
+      <div class="btn-panel">
+        <button class="door-btn" id="btnLeft" onclick="toggleDoor('left')">ЗАКРЫТЬ<br>ЛЕВУЮ</button>
+        <button class="door-btn" id="btnRight" onclick="toggleDoor('right')">ЗАКРЫТЬ<br>ПРАВУЮ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="top">
+    <div id="clock">12:00 AM</div>
+    <div class="night">NIGHT <span id="nightNum">1</span></div>
+  </div>
+  <div class="bottom">
+    <div>⚡ POWER LEFT: <span id="powerVal">100%</span></div>
+    <div class="usage">USAGE: <b id="usageVal">0%</b></div>
+  </div>
+  <div class="center-msg" id="centerMsg"></div>
+</div>
+
+<!-- Тап-зоны офиса -->
+<div class="tap-zone tap-left"   data-dir="left"></div>
+<div class="tap-zone tap-right"  data-dir="right"></div>
+<div class="tap-zone tap-up"     data-dir="up"></div>
+<div class="tap-zone tap-down"   data-dir="down"></div>
+<div class="tap-zone tap-center" data-dir="center"></div>
+
+<div id="hint">Тап по краям — поворот. Тап по монитору — камеры.</div>
+
+<button id="musicBtn" onclick="toggleMusic()">🔇</button>
+<div id="scare">💀</div>
+
+<!-- ============================================================
+     НОВЫЙ ИНТЕРФЕЙС КАМЕР
+     ============================================================ -->
+<div id="cam-ui">
+  <div id="cam-header">
+    <div class="cam-title" id="camTitle">SHOW STAGE</div>
+    <div class="cam-power">⚡ <span id="camBattery">100%</span></div>
+  </div>
+  <div id="cam-screen">
+    <div class="scanline"></div>
+    <div class="room-title" id="camRoomTitle">CAM 01</div>
+    <div class="room-bg" id="camRoomBg">
+      <!-- Сюда будут выводиться пиксельные аниматроники -->
+      <div class="cam-animatronic" id="camAnimFreddy">🐻</div>
+      <div class="cam-animatronic" id="camAnimBonnie">🐰</div>
+      <div class="cam-animatronic" id="camAnimChica">🐤</div>
+      <div class="cam-animatronic" id="camAnimFoxy">🦊</div>
+    </div>
+  </div>
+  <div id="cam-grid">
+    <div class="cam-btn active" data-cam="stage" onclick="switchCam('stage')">СЦЕНА <span class="cam-status" id="cs-stage">●</span></div>
+    <div class="cam-btn" data-cam="hall" onclick="switchCam('hall')">ЗАЛ <span class="cam-status" id="cs-hall">●</span></div>
+    <div class="cam-btn" data-cam="corridor" onclick="switchCam('corridor')">КОРИДОР <span class="cam-status" id="cs-corridor">●</span></div>
+    <div class="cam-btn" data-cam="kitchen" onclick="switchCam('kitchen')">КУХНЯ <span class="cam-status" id="cs-kitchen">●</span></div>
+    <div class="cam-btn" data-cam="backstage" onclick="switchCam('backstage')">ЗАКУЛИСЬЕ <span class="cam-status" id="cs-backstage">●</span></div>
+    <div class="cam-btn" data-cam="parts" onclick="switchCam('parts')">МАСТЕРСКАЯ <span class="cam-status" id="cs-parts">●</span></div>
+  </div>
+  <button id="close-cam" onclick="closeCameras()">✕ ЗАКРЫТЬ ПЛАНШЕТ</button>
+</div>
+
+<audio id="bgMusic" loop preload="auto"><source src="horror.mp3" type="audio/mpeg"></audio>
+<audio id="sfxDoor" preload="auto"><source src="https://www.myinstants.com/media/sounds/door-open.mp3" type="audio/mpeg"></audio>
+<audio id="sfxScare" preload="auto"><source src="https://www.myinstants.com/media/sounds/fnaf-scare.mp3" type="audio/mpeg"></audio>
+
+<script>
+const room    = document.getElementById('room');
+const clockEl = document.getElementById('clock');
+const nightEl = document.getElementById('nightNum');
+const powerEl = document.getElementById('powerVal');
+const usageEl = document.getElementById('usageVal');
+const screenPower = document.getElementById('screenPower');
+const screenUsage = document.getElementById('screenUsage');
+const centerMsg = document.getElementById('centerMsg');
+const scareEl = document.getElementById('scare');
+const musicBtn = document.getElementById('musicBtn');
+const audio = document.getElementById('bgMusic');
+const sfxDoor = document.getElementById('sfxDoor');
+const sfxScare = document.getElementById('sfxScare');
+const doorLeftEl = document.getElementById('doorLeft');
+const doorRightEl = document.getElementById('doorRight');
+const btnLeft = document.getElementById('btnLeft');
+const btnRight = document.getElementById('btnRight');
+const warnLeft = document.getElementById('warnLeft');
+const warnRight = document.getElementById('warnRight');
+const posterEl = document.getElementById('poster');
+const toyEls = { freddy: document.getElementById('toyFreddy'), bonnie: document.getElementById('toyBonnie'), chica: document.getElementById('toyChica') };
+
+// Элементы камер
+const camUI = document.getElementById('cam-ui');
+const camBatteryEl = document.getElementById('camBattery');
+const camTitleEl = document.getElementById('camTitle');
+const camRoomTitleEl = document.getElementById('camRoomTitle');
+const camRoomBg = document.getElementById('camRoomBg');
+const camAnims = {
+    freddy: document.getElementById('camAnimFreddy'),
+    bonnie: document.getElementById('camAnimBonnie'),
+    chica: document.getElementById('camAnimChica'),
+    foxy: document.getElementById('camAnimFoxy')
+};
+
+const state = {
+  hour: 0, night: 1, battery: 100, usage: 0,
+  alive: true, won: false,
+  leftClosed: false, rightClosed: false,
+  musicOn: false, camOpen: false, currentCam: 'stage',
+  rotX: 0, rotY: 0,
+  timer: null, drainTimer: null, stareTimer: null, camTimer: null,
+  anim: {
+    freddy: { zone:0, side:'left' },
+    bonnie: { zone:0, side:'right' },
+    chica:  { zone:0, side:'left' },
+    foxy:   { zone:0, side:'left' }
+  }
+};
+
+const ROT_STEP = 0.35, ROT_MAX = 1.6;
+function applyRotation() {
+  state.rotY = Math.max(-ROT_MAX, Math.min(ROT_MAX, state.rotY));
+  state.rotX = Math.max(-ROT_MAX, Math.min(ROT_MAX, state.rotX));
+  const rx = state.rotX * 18, ry = state.rotY * 22;
+  const tx = -state.rotY * 40, ty = -state.rotX * 20;
+  room.style.transform = `translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+}
+
+document.querySelectorAll('.tap-zone').forEach(zone => {
+  zone.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.camOpen) return; // Если камеры открыты, не крутим офис
+    const dir = zone.dataset.dir;
+    if (dir === 'left')   state.rotY += ROT_STEP;
+    if (dir === 'right')  state.rotY -= ROT_STEP;
+    if (dir === 'up')     state.rotX -= ROT_STEP;
+    if (dir === 'down')   state.rotX += ROT_STEP;
+    if (dir === 'center') { state.rotX = 0; state.rotY = 0; }
+    applyRotation();
+  });
+});
+
+// --- УПРАВЛЕНИЕ КАМЕРАМИ ---
+function openCameras() {
+  if (!state.alive || state.won) return;
+  state.camOpen = true;
+  camUI.classList.add('active');
+  state.battery -= 2; // Небольшая плата за включение
+  updateHUD();
+  switchCam('stage');
+  
+  // Открытые камеры тратят больше энергии
+  clearInterval(state.camTimer);
+  state.camTimer = setInterval(() => {
+    if (!state.alive || state.won || !state.camOpen) return;
+    state.battery = Math.max(0, state.battery - 0.2);
+    updateHUD();
+    if (state.battery <= 0) gameOver('🔋 БАТАРЕЯ РАЗРЯЖЕНА');
+  }, 3000);
+}
+
+function closeCameras() {
+  state.camOpen = false;
+  camUI.classList.remove('active');
+  clearInterval(state.camTimer);
+}
+
+const camNames = {
+  stage: 'SHOW STAGE',
+  hall: 'DINING HALL',
+  corridor: 'CORRIDOR',
+  kitchen: 'KITCHEN',
+  backstage: 'BACKSTAGE',
+  parts: 'PARTS & SERVICE'
+};
+
+function switchCam(camId) {
+  state.currentCam = camId;
+  camTitleEl.textContent = camNames[camId];
+  camRoomTitleEl.textContent = 'CAM ' + (Object.keys(camNames).indexOf(camId) + 1);
+  
+  // Обновляем кнопки
+  document.querySelectorAll('.cam-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.cam-btn[data-cam="${camId}"]`).classList.add('active');
+
+  // Скрываем всех аниматроников
+  for (let key in camAnims) camAnims[key].classList.remove('show');
+
+  // Проверяем, кто в этой зоне
+  const zoneMap = { stage: 0, hall: 1, corridor: 2, kitchen: -1, backstage: -1, parts: -1 };
+  const zone = zoneMap[camId];
+  
+  for (let name in state.anim) {
+    if (state.anim[name].zone === zone) {
+      camAnims[name].classList.add('show');
+    }
+  }
+
+  updateCamStatuses();
+}
+
+function updateCamStatuses() {
+  const zoneMap = { stage: 0, hall: 1, corridor: 2, kitchen: -1, backstage: -1, parts: -1 };
+  
+  for (let camId in zoneMap) {
+    const el = document.getElementById('cs-' + camId);
+    if (!el) continue;
+    
+    const zone = zoneMap[camId];
+    let hasAnim = false;
+    
+    for (let name in state.anim) {
+      if (state.anim[name].zone === zone) hasAnim = true;
+    }
+    
+    if (hasAnim) {
+      el.textContent = '⚠️';
+      el.className = 'cam-status danger';
+    } else {
+      el.textContent = '●';
+      el.className = 'cam-status';
+    }
+  }
+}
+
+// --- ОСТАЛЬНАЯ ЛОГИКА ---
+function toggleDoor(side) {
+  if (!state.alive || state.won) return;
+  if (side === 'left') {
+    state.leftClosed = !state.leftClosed;
+    doorLeftEl.classList.toggle('closed', state.leftClosed);
+    btnLeft.classList.toggle('closed', state.leftClosed);
+    doorLeftEl.querySelector('.label').textContent = state.leftClosed ? 'ОТКРЫТО' : 'ЗАКРЫТО';
+    btnLeft.innerHTML = state.leftClosed ? 'ОТКРЫТЬ<br>ЛЕВУЮ' : 'ЗАКРЫТЬ<br>ЛЕВУЮ';
+  } else {
+    state.rightClosed = !state.rightClosed;
+    doorRightEl.classList.toggle('closed', state.rightClosed);
+    btnRight.classList.toggle('closed', state.rightClosed);
+    doorRightEl.querySelector('.label').textContent = state.rightClosed ? 'ОТКРЫТО' : 'ЗАКРЫТО';
+    btnRight.innerHTML = state.rightClosed ? 'ОТКРЫТЬ<br>ПРАВУЮ' : 'ЗАКРЫТЬ<br>ПРАВУЮ';
+  }
+  state.battery = Math.max(0, state.battery - 2);
+  playSfx(sfxDoor);
+  updateHUD();
+}
+
+function playSfx(el) { try { if (el) { el.currentTime = 0; el.play().catch(()=>{}); } } catch(e){} }
+function toggleMusic() {
+  state.musicOn = !state.musicOn;
+  if (state.musicOn) { audio.volume = 0.15; audio.play().catch(()=>{}); musicBtn.textContent = '🔊'; }
+  else { audio.pause(); musicBtn.textContent = '🔇'; }
+}
+
+function updateHUD() {
+  const hours = state.hour + 12;
+  const h12 = hours > 12 ? hours - 12 : hours;
+  clockEl.textContent = `${h12}:00 ${hours >= 12 ? 'AM' : 'PM'}`;
+  nightEl.textContent = state.night;
+  const bat = Math.max(0, Math.round(state.battery));
+  powerEl.textContent = bat + '%'; screenPower.textContent = bat + '%';
+  camBatteryEl.textContent = bat + '%';
+  state.usage = Math.min(100, Math.round((100 - state.battery) * 1.3));
+  usageEl.textContent = state.usage + '%'; screenUsage.textContent = state.usage + '%';
+  powerEl.style.color = bat < 20 ? '#ff4444' : '#4caf50';
+  screenPower.style.color = bat < 20 ? '#ff4444' : '#4caf50';
+  camBatteryEl.style.color = bat < 20 ? '#ff4444' : '#4caf50';
+}
+
+function showCenter(msg, ms=1600) {
+  centerMsg.textContent = msg;
+  centerMsg.classList.add('show');
+  clearTimeout(showCenter._t);
+  showCenter._t = setTimeout(()=>centerMsg.classList.remove('show'), ms);
+}
+
+function startToyStareLoop() {
+  clearInterval(state.stareTimer);
+  state.stareTimer = setInterval(() => {
+    if (!state.alive || state.won) return;
+    if (Math.random() < 0.0025) {
+      const names = ['freddy','bonnie','chica'];
+      const who = names[Math.floor(Math.random()*names.length)];
+      const toy = toyEls[who];
+      if (!toy) return;
+      toy.classList.add('staring');
+      posterEl.classList.add('dark');
+      setTimeout(()=>posterEl.classList.remove('dark'), 1500);
+      setTimeout(()=> toy.classList.remove('staring'), 6000 + Math.random()*4000);
+    }
+  }, 8000);
+}
+
+function startLoop() {
+  clearInterval(state.timer); clearInterval(state.drainTimer);
+  const HOUR_MS = 180000; // 3 минуты = 1 час
+
+  state.timer = setInterval(() => {
+    if (!state.alive || state.won) return;
+    state.hour++; updateHUD();
+    if (state.hour >= 6) {
+      state.won = true; showCenter('🏆 6:00 AM — СМЕНА ОКОНЧЕНА', 4000);
+      clearInterval(state.timer); clearInterval(state.drainTimer); return;
+    }
+    moveAnimatronics();
+    // Обновляем статусы на камерах, если открыты
+    if (state.camOpen) switchCam(state.currentCam);
+  }, HOUR_MS);
+
+  state.drainTimer = setInterval(() => {
+    if (!state.alive || state.won) return;
+    let drain = 0.12;
+    if (state.leftClosed)  drain += 0.05;
+    if (state.rightClosed) drain += 0.05;
+    if (state.camOpen)     drain += 0.1; // Камеры жрут энергию
+    state.battery = Math.max(0, state.battery - drain);
+    if (state.battery <= 0) gameOver('🔋 БАТАРЕЯ РАЗРЯЖЕНА');
+    updateHUD();
+  }, 3000);
+}
+
+function moveAnimatronics() {
+  const names = ['freddy','bonnie','chica'];
+  const who = names[Math.floor(Math.random()*names.length)];
+  const a = state.anim[who];
+
+  if (a.zone < 3) {
+    a.zone++;
+    if (a.zone === 3) {
+      showCenter(`⚠️ ${capital(who)} У ДВЕРИ`, 1500);
+      if (a.side === 'left')  warnLeft.classList.add('show');
+      if (a.side === 'right') warnRight.classList.add('show');
+      if (a.side === 'left'  && !state.leftClosed)  return gameOver(`💀 ${capital(who)} ВОРВАЛСЯ`);
+      if (a.side === 'right' && !state.rightClosed) return gameOver(`💀 ${capital(who)} ВОРВАЛСЯ`);
+    }
+  } else {
+    if (a.side === 'left'  && !state.leftClosed)  return gameOver(`💀 ${capital(who)} ВОРВАЛСЯ`);
+    if (a.side === 'right' && !state.rightClosed) return gameOver(`💀 ${capital(who)} ВОРВАЛСЯ`);
+  }
+}
+
+function capital(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function gameOver(msg) {
+  if (!state.alive) return;
+  state.alive = false; 
+  clearInterval(state.timer); 
+  clearInterval(state.drainTimer);
+  clearInterval(state.camTimer);
+  closeCameras();
+  
+  scareEl.classList.add('show'); 
+  playSfx(sfxScare);
+  showCenter(msg + ' — GAME OVER', 4000);
+  setTimeout(()=> scareEl.classList.remove('show'), 900);
+}
+
+applyRotation(); startLoop(); startToyStareLoop(); updateHUD();
+showCenter('12:00 AM — СМЕНА НАЧАЛАСЬ', 2200);
+</script>
+</body>
+  </html>
